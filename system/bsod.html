@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Windows RC — Blue Screen</title>
+<style>
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: #0000AA; /* Win95 BSOD blue */
+    color: #FFFFFF;
+    font-family: "Lucida Console", monospace;
+    font-size: 16px;
+    line-height: 1.4em;
+  }
+  .screen {
+    padding: 40px;
+    white-space: pre; /* preserve ASCII art spacing */
+  }
+  .chilled {
+    color: cyan;
+  }
+</style>
+</head>
+<body>
+<div class="screen">
+*** STOP: 0x000000C4 (0x00000043,0x00000002,0x00000000,0x00000000)
+
+A fatal exception <span class="chilled">0E</span> has occurred at 0028:C0011E36 in VXD VMM(01) +
+00010E36. The current application will be terminated.
+
+*   Press any key to chill and continue
+*   Press CTRL+ALT+DEL again to restart your computer. You will
+    lose any unsaved chillness in all applications.
+
+Press any key to return to <span class="chilled">Windows RC — Really Chill Edition</span>.
+
+<b>Chilled Cat says:</b> "Keep calm, stay frosty 😸"
+
+      /\_/\  
+     ( o.o )   meow...
+      > ^ <   
+
+-------------------------------
+Technical Information:
+*** STOP: CHILLED_CAT_EXCEPTION
+*** Address = cool:0xC47C47C
+</div>
+
+<script>
+document.addEventListener("keydown", ()=> {
+  // simulate "reboot" to your desktop
+  window.location.href = "../index.html";
+});
+</script>
+</body>
+</html>

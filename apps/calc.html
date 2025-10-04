@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Catulator — Windows RC</title>
+  <style>
+    body { margin:0; background:#c0c0c0; font-family:sans-serif; display:flex; justify-content:center; align-items:center; height:100vh; }
+    .calc { background:#dcdcdc; padding:15px; border:2px solid #808080; box-shadow:2px 2px 0 #fff inset, -2px -2px 0 #808080 inset; }
+    .display { width:100%; height:40px; margin-bottom:10px; font-size:20px; text-align:right; padding:5px; border:2px inset #808080; background:#fff; }
+    .buttons { display:grid; grid-template-columns:repeat(4,60px); gap:5px; }
+    button { font-size:18px; padding:10px; background:#f0f0f0; border:2px outset #808080; cursor:pointer; }
+    button:active { border:2px inset #808080; }
+    .cat { grid-column:span 4; background:#ffe; font-size:14px; }
+  </style>
+</head>
+<body>
+  <div class="calc">
+    <input type="text" id="display" class="display" disabled>
+    <div class="buttons">
+      <button>7</button><button>8</button><button>9</button><button>/</button>
+      <button>4</button><button>5</button><button>6</button><button>*</button>
+      <button>1</button><button>2</button><button>3</button><button>-</button>
+      <button>0</button><button>.</button><button>=</button><button>+</button>
+      <button class="cat">🐾 Catulator says: Stay cool while calculating!</button>
+    </div>
+  </div>
+
+  <script>
+    const display = document.getElementById('display');
+    const buttons = document.querySelectorAll('button');
+
+    let current = '';
+    buttons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const value = btn.textContent;
+        if(value === '='){
+          try { current = eval(current).toString(); }
+          catch { current = 'Error'; }
+          display.value = current;
+        } else if(value.includes('Catulator')) {
+          alert('🐱 Chill vibes only! No math stress.');
+        } else {
+          current += value;
+          display.value = current;
+        }
+      });
+    });
+  </script>
+</body>
+</html>

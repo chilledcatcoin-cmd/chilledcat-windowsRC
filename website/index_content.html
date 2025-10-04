@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Chilled Cat — Home</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .centered {
+      text-align: center;
+      margin: 20px auto;
+    }
+    .hero-img {
+      display: block;
+      margin: 20px auto;
+    }
+    .links, .contract-box, .counter {
+      margin: 30px auto;
+      text-align: center;
+    }
+    .guestbook {
+      margin: 20px auto;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Marquee Banner -->
+  <marquee class="marquee" scrollamount="5">
+    <img src="files/images/chilled_cat_flex.webp" alt="Chilled Cat Flex" style="height: 1em; vertical-align: middle;"> 
+    Welcome to the Official Chilled Cat Website! 
+    <img src="files/images/chilled_cat_rockon.webp" alt="Chilled Cat Rock On" style="height: 1em; vertical-align: middle;">
+  </marquee>
+
+  <!-- Hero Image -->
+  <img src="files/images/chilled_cat_tile.gif" alt="Cat GIF" width="200" class="hero-img">
+
+  <div class="centered">
+    <h2>✨ Chill Vibes Only ✨</h2>
+    <p>Grab a drink, sit back, and relax with the Chilled Cat.</p>
+  </div>
+
+  <img src="files/images/chilled_cat_idea.webp" alt="Chilled Cat Idea" class="hero-img">
+
+  <!-- Links Section -->
+  <div class="links">
+    <h3>🌐 Chilled Cat Links</h3>
+    <div class="link-images">
+      <a href="https://dexscreener.com/ton/eqaunzdf_szbp6b39_1gcddtatwnfabert8yupoct3wxgbdt" target="_blank">
+        <img src="files/logo/dexscreener_logo_90s.png" alt="Dexscreener">
+      </a>
+      <a href="https://www.dextools.io/app/en/ton/pair-explorer/EQAuNZDF_SzbP6b39_1GcDdTATwNfabERt8yupocT3WXGBDt" target="_blank">
+        <img src="files/logo/dextools_logo_90s.png" alt="Dextools">
+      </a>
+      <a href="https://x.com/ChilledCatCoin" target="_blank">
+        <img src="files/logo/x_logo_90s.png" alt="Twitter / X">
+      </a>
+      <a href="https://t.me/ChilledCatCoin" target="_blank">
+        <img src="files/logo/telegram_logo_90s.png" alt="Telegram">
+      </a>
+      <a href="https://github.com/chilledcatcoin-cmd" target="_blank">
+        <img src="files/logo/github_logo_90s.png" alt="Github">
+      </a>
+    </div>
+  </div>
+
+  <!-- Contract Address Box -->
+  <div class="contract-box">
+    <marquee scrollamount="5" behavior="alternate">
+      <span>🔥 Official Contract Address 🔥</span>
+    </marquee>
+    <p id="contractAddress" class="address">
+      EQAwHA3KhihRIsKKWlJmw7ixrA3FJ4gZv3ialOZBVcl2Olpd
+    </p>
+    <p id="copyMsg" class="copy-message">✅ Copied to clipboard!</p>
+  </div>
+
+<footer class="browser-footer">
+  <p>This page is best viewed in:</p>
+  <a href="https://duckduckgo.com/app" target="_blank">
+    <img src="files/images/duckduckgo_logo.png" alt="DuckDuckGo Browser" width="120" height="40">
+  </a>
+  <a href="https://www.microsoft.com/edge/" target="_blank">
+    <img src="files/images/edge_logo.png" alt="Microsoft Edge" width="120" height="40">
+  </a>
+  <a href="https://en.wikipedia.org/wiki/Netscape_(web_browser)" target="_blank">
+    <img src="files/images/netscape_logo.png" alt="Netscape Browser" width="120" height="40">
+  </a>
+</footer>
+
+ <section class="counter-section">
+  <h3>Visitor Counter</h3>
+  <a href="https://www.hitwebcounter.com/" target="_blank">
+    <img src="https://hitwebcounter.com/counter/counter.php?page=21440887&style=0001&nbdigits=5&type=page&initCount=0" 
+         title="Visitor Counter" alt="Visitor Counter" />
+  </a>
+</section>
+
+  <!-- Guestbook Link -->
+  <div class="guestbook">
+    <a href="guestbook.html" style="color:#66ccff;">📖 Sign our Guestbook</a>
+  </div>
+
+  <script>
+    /* Visitor Counter */
+    fetch("./counter.php")
+      .then(r => r.text())
+      .then(count => {
+        document.getElementById("visitCount").innerText = count.padStart(6, "0");
+      });
+
+    /* Contract Copy Logic */
+    document.getElementById("contractAddress").addEventListener("click", function() {
+      const addr = this.innerText.trim();
+      navigator.clipboard.writeText(addr).then(() => {
+        const msg = document.getElementById("copyMsg");
+        msg.style.display = "block";
+        setTimeout(() => { msg.style.display = "none"; }, 2000);
+      });
+    });
+  </script>
+</body>
+</html>

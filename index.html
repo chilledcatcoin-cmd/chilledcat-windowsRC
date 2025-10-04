@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Windows RC Boot</title>
+  <style>
+    body { margin:0; background:#000; color:#0f0; font-family:"Courier New",monospace; font-size:18px; height:100vh; overflow:hidden; }
+    .hidden { display:none!important; }
+    .cursor { display:inline-block; width:10px; background:#0f0; margin-left:5px; animation:blink 1s step-start infinite; }
+    @keyframes blink { 50%{ background:transparent; } }
+    #dos { padding:20px; white-space:pre-line; }
+    #boot { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; }
+    .logo { max-width:400px; width:80%; }
+    .bar { margin-top:30px; width:400px; max-width:80%; height:20px; border:2px solid #fff; background:#111; overflow:hidden; }
+    .prog { background:linear-gradient(90deg,#00aaff,#66ddff); width:0%; height:100%; }
+    .fade-out { animation:fadeOut 1s forwards; }
+    @keyframes fadeOut { from{opacity:1} to{opacity:0} }
+  </style>
+</head>
+<body>
+  <div id="dos"></div>
+  <div id="boot" class="hidden">
+    <img src="./media/loading.png" class="logo" alt="Windows RC">
+    <div class="bar"><div class="prog"></div></div>
+  </div>
+  <audio id="sound"><source src="./media/startup.mp3" type="audio/mpeg"></audio>
+
+  <script>
+    const dos=document.getElementById('dos');
+    const boot=document.getElementById('boot');
+    const s=document.getElementById('sound');
+    const cursor=document.createElement('span'); cursor.className='cursor';
+
+    const text=`Windows RC Setup
+Select partition to boot from:
+
+[1] C:\\Windows RC (Really Chill Edition)
+[2] D:\\Data
+[3] E:\\Chill Drive
+
+Press ENTER or TAP to boot from partition 1...`;
+
+    // Simulated typing
+    let i=0;
+    function typeLine(){
+      if(i<text.length){
+        dos.textContent+=text[i];
+        i++;
+        setTimeout(typeLine, 20 + Math.random()*40);
+      } else {
+        dos.appendChild(cursor);
+        // Auto boot after 5s if no input
+        setTimeout(()=>{ if(!bootStarted) startBoot(); },5000);
+      }
+    }
+    typeLine();
+
+    let bootStarted=false;
+    function startBoot(){
+      if(bootStarted) return;
+      bootStarted=true;
+      dos.classList.add('hidden');
+      boot.classList.remove('hidden');
+      s.play().catch(()=>{});
+      // Animate bar jitter
+      const prog=document.querySelector('.prog');
+      let w=0;
+      const timer=setInterval(()=>{
+        w+=Math.random()*12;
+        if(w>=100){ w=100; clearInterval(timer); }
+        prog.style.width=w+"%";
+      },300);
+      // Fade + redirect
+      setTimeout(()=>{
+        document.body.classList.add('fade-out');
+        setTimeout(()=>location.href='desktop.html',1000);
+      },6500);
+    }
+
+    // Keyboard (desktop)
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Enter') startBoot();
+    });
+
+    // Touch or click (mobile + desktop)
+    document.addEventListener('click', () => startBoot());
+    document.addEventListener('touchstart', () => startBoot());
+  </script>
+</body>
+</html>

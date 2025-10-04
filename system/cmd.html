@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>MS-DOS Prompt</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root { --fg:#00ff00; --bg:#000; }
+  html, body { height:100%; }
+  body {
+    margin:0;
+    background:var(--bg);
+    color:var(--fg);
+    font-family:"Courier New", monospace;
+    font-size:16px;
+    display:flex;
+    flex-direction:column;
+  }
+  #screen {
+    flex:1;
+    padding:10px;
+    white-space:pre-wrap;
+    overflow:auto;
+  }
+  #input {
+    display:flex;
+    gap:6px;
+    padding:10px;
+    border-top:1px solid #003300;
+  }
+  #prompt { flex:none; }
+  #cmdline {
+    flex:1;
+    background:var(--bg);
+    color:var(--fg);
+    border:none;
+    outline:none;
+    font:inherit;
+  }
+  ::selection { background:#004400; }
+</style>
+</head>
+<body>
+  <div id="screen"></div>
+  <div id="input">
+    <span id="prompt">C:\></span>
+    <input id="cmdline" spellcheck="false" autocomplete="off" autofocus />
+  </div>
+
+<script>
+(() => {
+  const screen = document.getElementById('screen');
+  const input  = document.getElementById('cmdline');
+  const PROMPT = 'C:\\>';
+
+  function print(text=''){ screen.textContent += text; }
+  function println(text=''){ screen.textContent += text + '\n'; }
+  function prompt(){ /* visual prompt is in the fixed input row */ }
+  function scrollBottom(){ screen.scrollTop = screen.scrollHeight; }
+  function nowTime(){
+    const d=new Date();
+    const hh=String(d.getHours()).padStart(2,'0');
+    const mm=String(d.getMinutes()).padStart(2,'0');
+    const ss=String(d.getSeconds()).padStart(2,'0');
+    return `${hh}:${mm}:${ss}`;
+  }
+  function nowDate(){
+    const d=new Date();
+    const y=d.getFullYear();
+    const m=String(d.getMonth()+1).padStart(2,'0');
+    const day=String(d.getDate()).padStart(2,'0');
+    return `${m}/${day}/${y}`;
+  }
+
+  // Banner
+  println('Microsoft(R) Windows RC DOS');
+  println('(C) Chilled Cat Corporation 1995-2025.');
+  println('');
+  scrollBottom();
+
+  // Commands
+  const commands = {
+    help(){
+      println('Supported commands:');
+      println('  HELP   - show this message');
+      println('  DIR    - list fake directory');
+      println('  CLS    - clear screen');
+      println('  VER    - show version');
+      println('  TIME   - show current time');
+      println('  DATE   - show current date');
+      println('  ECHO X - print X');
+      println('  TYPE   - TYPE CHILL.TXT');
+      println('  CHILL  - secret chilled cat');
+      println('  EXIT   - return to Windows RC');
+    },
+    dir(){
+      println(' Volume in drive C is RCOS');
+      println(' Directory of C:\\');
+      println('');
+      println('WINDOWS       <DIR>');
+      println('PROGRAMS      <DIR>');
+      println('CHILL.TXT        1KB');
+      println('COMMAND.COM     54KB');
+    },
+    cls(){ screen.textContent=''; },
+    ver(){ println('Windows RC DOS [Version 7.10.95-CHILL]'); },
+    time(){ println('Current time: ' + nowTime()); },
+    date(){ println('Current date: ' + nowDate()); },
+    echo(args){ println(args.join(' ')); },
+    type(args){
+      const name=(args[0]||'').toUpperCase();
+      if(name==='CHILL.TXT'){
+        println('Chilled Cat Readme');
+        println('Stay cool. Stay curious. Meow.');
+      } else {
+        println('File not found');
+      }
+    },
+    chill(){
+      println(String.raw`
+      |\      _,,,---,,_
+ZZZzz /,` + "`" + `.-'` + "`" + `'    -.  ;-;;,_
+     |,4-  ) )-,_. ,\ (  '-'
+    '---''(_/--'  \`-'_)   [CHILLED CAT MODE]`);
+    },
+    exit(){
+      println('Exiting MS-DOS mode...');
+      // Hard reload to boot screen (../index.html from /system/)
+      setTimeout(() => {
+        // cache-bust to ensure a fresh boot
+        const url = '../index.html?r=' + Date.now();
+        window.location.replace(url);
+      }, 1200);
+    }
+  };
+
+  function run(cmdline){
+    // Echo the command onto the screen (like DOS shows after Enter)
+    println(PROMPT + cmdline);
+
+    const parts = cmdline.trim().split(/\s+/).filter(Boolean);
+    if(parts.length===0){ /* empty */ return; }
+
+    const cmd = parts[0].toLowerCase();
+    const args = parts.slice(1);
+
+    if(cmd in commands){
+      if(cmd==='echo'){ commands.echo(args); }
+      else if(cmd==='type'){ commands.type(args); }
+      else { commands[cmd](); }
+    } else {
+      println('Bad command or file name');
+    }
+  }
+
+  // Input handling
+  input.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter'){
+      const value = input.value;
+      run(value);
+      input.value='';
+      scrollBottom();
+    } else if(e.key === 'Tab'){
+      // prevent focus leaving input
+      e.preventDefault();
+    }
+  });
+
+  // Keep focus on click
+  document.addEventListener('mousedown', () => {
+    setTimeout(() => input.focus(), 0);
+  });
+
+  // Ensure caret stays at end (handy on refocus)
+  input.addEventListener('focus', () => {
+    const v = input.value; input.value=''; input.value=v;
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+[
+  {
+    "name": "Secrets",
+    "path": "/media/mnt/main harddrive/System/Secrets",
+    "type": "folder"
+  },
+  {
+    "name": "autoexec.bat",
+    "path": "/media/mnt/main harddrive/System/autoexec.bat",
+    "type": "file"
+  },
+  {
+    "name": "config.sys",
+    "path": "/media/mnt/main harddrive/System/config.sys",
+    "type": "file"
+  },
+  {
+    "name": "rc.dll",
+    "path": "/media/mnt/main harddrive/System/rc.dll",
+    "type": "file"
+  },
+  {
+    "name": "readme.txt",
+    "path": "/media/mnt/main harddrive/System/readme.txt",
+    "type": "file"
+  },
+  {
+    "name": "winrc.ini",
+    "path": "/media/mnt/main harddrive/System/winrc.ini",
+    "type": "file"
+  }
+]

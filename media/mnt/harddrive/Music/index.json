@@ -1,0 +1,22 @@
+[
+  {
+    "name": "chillmix1.mid",
+    "path": "/media/mnt/main harddrive/Music/chillmix1.mid",
+    "type": "file"
+  },
+  {
+    "name": "chillmix2.mid",
+    "path": "/media/mnt/main harddrive/Music/chillmix2.mid",
+    "type": "file"
+  },
+  {
+    "name": "floppyjams.wav",
+    "path": "/media/mnt/main harddrive/Music/floppyjams.wav",
+    "type": "file"
+  },
+  {
+    "name": "secret_track.mp3",
+    "path": "/media/mnt/main harddrive/Music/secret_track.mp3",
+    "type": "file"
+  }
+]

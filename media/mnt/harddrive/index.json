@@ -1,0 +1,32 @@
+[
+  {
+    "name": "Documents",
+    "path": "/media/mnt/main harddrive/Documents",
+    "type": "folder"
+  },
+  {
+    "name": "Games",
+    "path": "/media/mnt/main harddrive/Games",
+    "type": "folder"
+  },
+  {
+    "name": "Music",
+    "path": "/media/mnt/main harddrive/Music",
+    "type": "folder"
+  },
+  {
+    "name": "Pictures",
+    "path": "/media/mnt/main harddrive/Pictures",
+    "type": "folder"
+  },
+  {
+    "name": "System",
+    "path": "/media/mnt/main harddrive/System",
+    "type": "folder"
+  },
+  {
+    "name": "Readme.txt",
+    "path": "./media/mnt/main harddrive/Readme.txt",
+    "type": "file"
+  }
+]

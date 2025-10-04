@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chilled Cat</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body {
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    iframe {
+      flex: 1;
+      width: 100%;
+      border: none;
+    }
+  </style>
+</head>
+<body>
+  <!-- Global Navigation -->
+  <nav class="site-nav">
+    <a href="index_content.html" target="mainFrame" class="nav-link">🏠 Home</a>
+    <a href="stickers.html" target="mainFrame" class="nav-link">📦 Stickers</a>
+    <a href="history.html" target="mainFrame" class="nav-link">📜 History</a>
+    <a href="whitepaper.html" target="mainFrame" class="nav-link">📑 Whitepaper</a>
+    <a href="about.html" target="mainFrame" class="nav-link">😺 About</a>
+  </nav>
+
+  <!-- Content iframe -->
+  <iframe name="mainFrame" src="index_content.html"></iframe>
+
+ <!-- Persistent Music Player -->
+<div class="playerbar">
+  <button class="pbtn" id="prev">⏮</button>
+  <button class="pbtn" id="playPause">▶️</button>
+  <button class="pbtn" id="next">⏭</button>
+  <div class="ptrack" id="trackName">Now Playing: —</div>
+  <audio id="player"></audio>
+  <input type="range" id="volume" class="pvol" min="0" max="1" step="0.05" value="0.8">
+</div>
+
+<script>
+  // 🎶 Playlist of tracks
+  const tracks = [
+    { name: "Cosmic Whiskers", file: "files/music/Cosmic Whiskers.mp3" },
+    { name: "Lo-Fi Catnap", file: "files/music/Lo-Fi Catnap.mp3" },
+    { name: "Neon Alley Chill", file: "files/music/Neon Alley Chill.mp3" },
+    { name: "Pixel Dreams", file: "files/music/Pixel Dreams.mp3" },
+    { name: "Retro Net Jam", file: "files/music/Retro Net Jam.mp3" }
+  ];
+
+  let current = 0;
+  const audio = document.getElementById('player');
+  const playPause = document.getElementById('playPause');
+  const volume = document.getElementById('volume');
+  const trackName = document.getElementById('trackName');
+  const prevBtn = document.getElementById('prev');
+  const nextBtn = document.getElementById('next');
+
+  function loadTrack(index) {
+    current = (index + tracks.length) % tracks.length; // wrap around
+    audio.src = tracks[current].file;
+    trackName.textContent = "Now Playing: " + tracks[current].name;
+    audio.play().catch(()=>{});
+    playPause.textContent = "⏸";
+  }
+
+  // Controls
+  playPause.addEventListener('click', () => {
+    if (audio.paused) {
+      audio.play(); playPause.textContent = "⏸";
+    } else {
+      audio.pause(); playPause.textContent = "▶️";
+    }
+  });
+
+  prevBtn.addEventListener('click', () => loadTrack(current - 1));
+  nextBtn.addEventListener('click', () => loadTrack(current + 1));
+  volume.addEventListener('input', () => { audio.volume = volume.value; });
+
+  // Auto advance when track ends
+  audio.addEventListener('ended', () => loadTrack(current + 1));
+
+  // Start first track
+  loadTrack(0);
+</script>
+
+</body>
+</html>

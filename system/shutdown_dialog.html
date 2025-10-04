@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: transparent;
+    font-family: sans-serif;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .window {
+    width: 360px;
+    border: 2px solid #000;
+    background: #c0c0c0;
+    box-shadow: 2px 2px #404040;
+    display: flex;
+    flex-direction: column;
+  }
+  .titlebar {
+    background: #000080;
+    color: #fff;
+    padding: 4px;
+    font-size: 13px;
+  }
+  .content { padding: 12px; }
+  .options { margin: 10px 0; }
+  .options label { display: block; margin-bottom: 6px; }
+  .buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    padding: 6px 12px 12px;
+  }
+  button {
+    padding: 2px 12px;
+    font-size: 13px;
+    background: #e0e0e0;
+    border: 2px outset #fff;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+  <div class="window">
+    <div class="titlebar">Shut Down Windows RC</div>
+    <div class="content">
+      <div>What do you want the computer to do?</div>
+      <div class="options">
+        <label><input type="radio" name="choice" value="shutdown" checked> Shut down your computer</label>
+        <label><input type="radio" name="choice" value="restart"> Restart your computer</label>
+        <label><input type="radio" name="choice" value="msdos"> Restart the computer in MS-DOS mode</label>
+      </div>
+    </div>
+    <div class="buttons">
+      <button onclick="sendChoice()">OK</button>
+      <button onclick="cancel()">Cancel</button>
+    </div>
+  </div>
+
+  <!-- ✅ Audio lives in the same frame as the OK button -->
+  <audio id="shutdown-audio" src="../media/shutdown.mp3"></audio>
+
+<script>
+function sendChoice(){
+  const choice=document.querySelector('input[name=choice]:checked').value;
+
+  // Direct play (same frame + same click → guaranteed allowed)
+  const audio=document.getElementById('shutdown-audio');
+  audio.currentTime=0;
+  audio.play().catch(err=>console.log("Audio blocked anyway:", err));
+
+  // Tell desktop what to do next
+  window.top.postMessage({type:'shutdown-choice',choice},'*');
+}
+function cancel(){
+  window.top.postMessage('close-shutdown-dialog','*');
+}
+</script>
+</body>
+</html>

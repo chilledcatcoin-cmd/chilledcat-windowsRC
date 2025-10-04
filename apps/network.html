@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dial-Up Networking</title>
+  <style>
+    body {
+      margin: 0;
+      background: #c0c0c0;
+      font-family: "MS Sans Serif", sans-serif;
+      font-size: 13px;
+      color: #000;
+    }
+
+    .content {
+      display: flex;
+      padding: 12px;
+      gap: 12px;
+    }
+
+    .left-col { 
+      width: 120px; 
+      display: flex; 
+      justify-content: center; 
+      align-items: center; 
+    }
+
+    /* Use the new chilled cat phone art */
+    .net-art { 
+      width: 96px; 
+      height: auto; 
+      image-rendering: pixelated; 
+    }
+
+    .field { margin-bottom: 10px; display: flex; gap: 8px; align-items: center; }
+    .field label { width: 100px; font-size: 12px; color: #000080; }
+    .value { background: #fff; border: 1px solid #000; padding: 4px 6px; min-height: 20px; }
+
+    .field.small .value { font-family: monospace; }
+
+    .buttons { margin-top: 6px; display: flex; gap: 8px; }
+    .buttons button { padding: 4px 10px; border: 2px outset #c0c0c0; cursor: pointer; font-size: 13px; }
+    .buttons button:active { border: 2px inset #808080; }
+
+    .statusbar {
+      background: #c0c0c0;
+      border-top: 2px solid #fff;
+      border-left: 2px solid #fff;
+      border-right: 2px solid #808080;
+      border-bottom: 2px solid #808080;
+      padding: 6px 8px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="content">
+    <div class="left-col">
+      <!-- Replace old modem icon with new cat phone art -->
+      <img src="../media/icons/chilledcat_phone.png" alt="Chilled Cat on Phone" class="net-art">
+    </div>
+
+    <div class="right-col">
+      <div class="field">
+        <label>Connection:</label>
+        <div class="value">Chilled ISP (Dial-up)</div>
+      </div>
+
+      <div class="field">
+        <label>Status:</label>
+        <div id="net-status" class="value">Not connected</div>
+      </div>
+
+      <div class="field small">
+        <label>IP Address:</label>
+        <div id="net-ip" class="value">—</div>
+      </div>
+
+      <div class="buttons">
+        <button id="connect-btn" onclick="startDialup()">Connect</button>
+        <button onclick="stopDialup()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="statusbar">
+    <span id="net-notes">Click Connect to dial your ISP.</span>
+  </div>
+
+  <audio id="dialup-audio" preload="auto">
+    <source src="../media/dialup.mp3" type="audio/mpeg">
+  </audio>
+
+  <script>
+    const netStatus   = document.getElementById('net-status');
+    const netIP       = document.getElementById('net-ip');
+    const connectBtn  = document.getElementById('connect-btn');
+    const dialupAudio = document.getElementById('dialup-audio');
+
+    let dotsTimer = null;
+
+    function startDialup() {
+      connectBtn.disabled = true;
+      netStatus.textContent = "Dialing";
+      let dots = 0;
+
+      dotsTimer = setInterval(() => {
+        dots = (dots + 1) % 4;
+        netStatus.textContent = "Dialing" + ".".repeat(dots);
+      }, 500);
+
+      dialupAudio.load();
+      dialupAudio.currentTime = 0;
+      dialupAudio.play().catch(err => console.error("Playback error:", err));
+
+      dialupAudio.onended = () => {
+        clearInterval(dotsTimer);
+        netStatus.textContent = "Connected";
+        netIP.textContent = "192.168.0." + Math.floor(Math.random() * 200 + 2);
+      };
+    }
+
+    function stopDialup() {
+      clearInterval(dotsTimer);
+      dialupAudio.pause();
+      dialupAudio.currentTime = 0;
+      connectBtn.disabled = false;
+      netStatus.textContent = "Not connected";
+      netIP.textContent = "—";
+    }
+  </script>
+
+</body>
+</html>

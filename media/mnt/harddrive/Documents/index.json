@@ -1,0 +1,22 @@
+[
+  {
+    "name": "receipts",
+    "path": "/media/mnt/main harddrive/Documents/receipts",
+    "type": "folder"
+  },
+  {
+    "name": "diary.txt",
+    "path": "/media/mnt/main harddrive/Documents/diary.txt",
+    "type": "file"
+  },
+  {
+    "name": "letter_to_catclub.doc",
+    "path": "/media/mnt/main harddrive/Documents/letter_to_catclub.doc",
+    "type": "file"
+  },
+  {
+    "name": "todo.txt",
+    "path": "/media/mnt/main harddrive/Documents/todo.txt",
+    "type": "file"
+  }
+]

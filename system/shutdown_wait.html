@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Shutdown</title>
+  <style>
+    body {
+      background: black;
+      color: orange;
+      text-align: center;
+      padding-top: 20%;
+      font-family: "MS Sans Serif", sans-serif;
+    }
+    img { width: 200px; }
+    .blue { color: skyblue; }
+  </style>
+</head>
+<body>
+  <img src="../media/loading.png" alt="loading">
+  <div class="blue">Windows RC — Really Chill Edition</div>
+  <div id="status">Please wait while your computer shuts down...</div>
+
+  <!-- shutdown audio -->
+  <audio id="sd" autoplay>
+    <source src="../media/shutdown.mp3" type="audio/mpeg">
+  </audio>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const next = params.get("next");
+    const audio = document.getElementById("sd");
+    const status = document.getElementById("status");
+
+    // ensure playback even if autoplay is ignored
+    window.addEventListener("load", () => {
+      audio.play().catch(err => console.warn("Autoplay blocked:", err));
+    });
+
+    // when audio ends, redirect or update
+    audio.onended = () => {
+      goNext();
+    };
+
+    // fallback if audio fails or is blocked
+    audio.onerror = () => {
+      goNext();
+    };
+
+    // safety net: force continue after 10s max
+    setTimeout(goNext, 10000);
+
+    function goNext() {
+      if (next === "safe") {
+        status.textContent = "It is now safe to turn off your computer.";
+      } else if (next) {
+        window.location.href = next;
+      }
+    }
+  </script>
+</body>
+</html>

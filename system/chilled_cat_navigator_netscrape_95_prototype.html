@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ChilledCat Navigator — Netscrape ’95</title>
+<style>
+  :root{
+    --chrome-bg:#c0c0c0;         /* Win95 gray */
+    --chrome-dark:#808080;       /* dark edge */
+    --chrome-light:#fff;         /* light edge */
+    --accent:#0b2a52;            /* deep navy */
+    --accent-2:#1b3f7a;          /* toolbar/nav */
+    --text:#000;
+    --btn-bg:#d9d9d9;
+    --btn-hover:#e9e9e9;
+    --url-bg:#fff;
+    --tab-bg:#d2d7e0;
+    --tab-active:#ffffff;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:#0a1a33;color:var(--text);font:13px/1.2 "MS Sans Serif", Tahoma, Verdana, sans-serif;display:flex;flex-direction:column}
+
+  /* Title bar */
+  .titlebar{background:linear-gradient(180deg,#0e2b57,#0a2042);color:#dfe9ff;padding:4px 8px;display:flex;align-items:center;gap:8px;border-bottom:2px solid #06162e;user-select:none}
+  .titlebar .logo{width:18px;height:18px;display:inline-block}
+  .titlebar .title{font-weight:bold;letter-spacing:.2px}
+  .titlebar .window-buttons{margin-left:auto;display:flex;gap:4px}
+  .winbtn{width:18px;height:18px;background:var(--chrome-bg);border:2px outset var(--chrome-light);display:grid;place-items:center;cursor:pointer}
+  .winbtn:active{border:2px inset var(--chrome-dark)}
+
+  /* Menu row */
+  .menubar{background:var(--chrome-bg);border-bottom:1px solid var(--chrome-dark);display:flex;gap:12px;padding:2px 8px;user-select:none}
+  .menu-item{padding:2px 6px;border:1px solid transparent;cursor:default}
+  .menu-item:hover{border-color:var(--chrome-dark)}
+
+  /* Toolbar */
+  .toolbar{background:var(--accent-2);color:#eef6ff;display:flex;align-items:center;gap:6px;padding:4px;border-bottom:2px solid #06162e}
+  .btn{display:inline-flex;align-items:center;gap:5px;padding:4px 8px;background:#244a86;border:1px solid #0a2b5e;border-radius:3px;color:#eef6ff;cursor:pointer}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn:hover{filter:brightness(1.1)}
+  .btn svg{width:14px;height:14px;flex:0 0 14px}
+
+  .addressbar{flex:1;display:flex;gap:6px}
+  .addressbar input{flex:1;padding:5px 8px;border:2px inset var(--chrome-dark);background:var(--url-bg)}
+  .addressbar .go{padding:5px 10px;background:var(--btn-bg);border:2px outset var(--chrome-light);cursor:pointer}
+  .addressbar .go:active{border:2px inset var(--chrome-dark)}
+
+  /* Tabs */
+  .tabs{display:flex;gap:2px;background:var(--chrome-bg);border-bottom:2px ridge var(--chrome-light);padding:2px 4px;overflow-x:auto}
+  .tab{background:var(--tab-bg);padding:6px 10px;border:2px solid var(--chrome-dark);border-bottom:none;border-top-left-radius:6px;border-top-right-radius:6px;cursor:pointer;display:flex;align-items:center;gap:6px;min-width:140px}
+  .tab.active{background:var(--tab-active);font-weight:bold}
+  .tab .close{margin-left:auto;background:transparent;border:none;cursor:pointer}
+
+  /* Bookmarks/sidebar */
+  .content-row{flex:1;display:flex;min-height:0}
+  .sidebar{width:220px;background:#0f2a54;color:#dfe9ff;border-right:2px solid #06162e;display:flex;flex-direction:column}
+  .sidebar h3{margin:10px;font-size:12px;text-transform:uppercase;opacity:.8}
+  .bookmark{padding:8px 10px;border-bottom:1px solid #0a1f41;cursor:pointer;display:flex;align-items:center;gap:8px}
+  .bookmark:hover{background:#173a73}
+  .bookmark svg{width:14px;height:14px}
+
+  /* Status bar */
+  .status{height:22px;background:var(--chrome-bg);border-top:1px solid var(--chrome-dark);display:flex;align-items:center;gap:10px;padding:0 6px}
+  .throbber{width:20px;height:20px;border-radius:50%;border:3px solid #9cf;border-top-color:#1b3f7a;animation:spin 1s linear infinite;display:none}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .status .hint{color:#333}
+
+  /* Browser viewport */
+  .viewport{flex:1;background:#00122a;display:flex;align-items:center;justify-content:center}
+  iframe{width:100%;height:100%;border:none;background:white}
+
+  /* Retro 3D edges utility */
+  .bevel{border:2px outset var(--chrome-light)}
+
+  /* About modal */
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center}
+  .modal .window{width:460px;background:var(--chrome-bg);border:2px outset var(--chrome-light)}
+  .modal .window header{background:#10335f;color:#dfe9ff;padding:6px 8px;font-weight:bold}
+  .modal .window .body{padding:12px;color:#111}
+  .modal .window footer{padding:8px;display:flex;justify-content:flex-end;gap:6px}
+  .modal .window button{padding:6px 10px;background:var(--btn-bg);border:2px outset var(--chrome-light);cursor:pointer}
+
+  /* Responsive tweak */
+  @media (max-width: 760px){
+    .sidebar{display:none}
+    .tab{min-width:120px}
+  }
+</style>
+</head>
+<body>
+  <!-- Title bar -->
+  <div class="titlebar">
+    <svg class="logo" viewBox="0 0 64 64" aria-hidden="true">
+      <!-- Chilled Cat comet “C” logo -->
+      <defs>
+        <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#9cf"/>
+          <stop offset="1" stop-color="#0b2a52"/>
+        </linearGradient>
+      </defs>
+      <circle cx="32" cy="32" r="30" fill="#0b2a52"/>
+      <path d="M45 22c-4-6-11-9-18-7-9 2-15 11-13 20 2 9 11 15 20 13 6-1 11-5 13-10-4 4-9 6-14 5-8-2-12-9-11-17 1-8 9-12 17-11 2 0 4 1 6 2z" fill="url(#g)"/>
+      <circle cx="44" cy="20" r="3" fill="#9cf"/>
+    </svg>
+    <div class="title">ChilledCat Navigator — Netscrape ’95</div>
+    <div class="window-buttons">
+      <div class="winbtn" title="Minimize" onclick="window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'})">‒</div>
+      <div class="winbtn" title="Maximize" onclick="toggleFullscreen()">▢</div>
+      <div class="winbtn" title="Close" onclick="window.close()">×</div>
+    </div>
+  </div>
+
+  <!-- Menubar (static for vibe) -->
+  <div class="menubar">
+    <div class="menu-item" onclick="openAbout()">File</div>
+    <div class="menu-item">Edit</div>
+    <div class="menu-item">View</div>
+    <div class="menu-item">Go</div>
+    <div class="menu-item">Bookmarks</div>
+    <div class="menu-item">Help</div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <button class="btn" id="backBtn" title="Back" onclick="goBack()" disabled>
+      <svg viewBox="0 0 24 24"><path fill="currentColor" d="M14 7l-5 5 5 5V7z"/></svg> Back
+    </button>
+    <button class="btn" id="fwdBtn" title="Forward" onclick="goForward()" disabled>
+      <svg viewBox="0 0 24 24"><path fill="currentColor" d="M10 7l5 5-5 5V7z"/></svg> Forward
+    </button>
+    <button class="btn" title="Reload" onclick="reloadFrame()">
+      <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 6V3L8 7l4 4V8a4 4 0 11-4 4H6a6 6 0 106-6z"/></svg> Reload
+    </button>
+    <button class="btn" title="Stop" onclick="stopLoad()">
+      <svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" fill="currentColor"/></svg> Stop
+    </button>
+    <button class="btn" title="Home" onclick="navigate('about:chill')">
+      <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 5l9 8h-3v6h-4v-4H10v4H6v-6H3z"/></svg> Home
+    </button>
+
+    <div class="addressbar">
+      <input id="url" type="text" spellcheck="false" placeholder="Type a URL or search…" />
+      <button class="go" onclick="goURL()">Go</button>
+    </div>
+
+    <label class="btn" title="Open local HTML">
+      <input id="fileOpen" type="file" accept="text/html,.html,.htm" hidden />
+      <svg viewBox="0 0 24 24"><path fill="currentColor" d="M14 3v4h4l-4-4zM5 4h7l6 6v10a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2zm2 12h10v2H7v-2zm0-4h10v2H7v-2z"/></svg>
+      Open
+    </label>
+  </div>
+
+  <!-- Tabs (single active tab for now) -->
+  <div class="tabs" id="tabs">
+    <div class="tab active" id="tab-0" onclick="activateTab(0)">
+      <span>Start — ChilledCat</span>
+      <button class="close" title="Close tab" onclick="closeTab(event,0)">✕</button>
+    </div>
+    <button class="btn" style="margin-left:auto" onclick="newTab('about:blank')">＋ New Tab</button>
+  </div>
+
+  <div class="content-row">
+    <!-- Bookmarks -->
+    <aside class="sidebar">
+      <h3>Bookmarks</h3>
+      <div class="bookmark" onclick="navigate('about:chill')">
+        <svg viewBox="0 0 24 24"><path fill="currentColor" d="M6 2h12v20l-6-4-6 4V2z"/></svg>
+        Start Page
+      </div>
+      <div class="bookmark" onclick="navigate('https://duckduckgo.com/?q=Chilled+Cat')">
+        <svg viewBox="0 0 24 24"><path fill="currentColor" d="M21 11A9 9 0 113 11a9 9 0 0118 0z"/></svg>
+        Search: Chilled Cat
+      </div>
+      <div class="bookmark" onclick="navigate('https://example.com')">
+        <svg viewBox="0 0 24 24"><path fill="currentColor" d="M10 3h4v2h-4zM4 7h16v12H4z"/></svg>
+        Example Site
+      </div>
+      <div class="bookmark" onclick="navigate('about:credits')">
+        <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2l4 8H8l4-8zm0 12a4 4 0 100 8 4 4 0 000-8z"/></svg>
+        Credits
+      </div>
+    </aside>
+
+    <!-- Viewport -->
+    <main class="viewport bevel">
+      <iframe id="view" srcdoc="" sandbox="allow-forms allow-scripts allow-popups allow-pointer-lock allow-downloads"></iframe>
+    </main>
+  </div>
+
+  <!-- Status bar -->
+  <div class="status">
+    <div class="throbber" id="throb"></div>
+    <div class="hint" id="statusText">Ready.</div>
+  </div>
+
+  <!-- About modal -->
+  <div class="modal" id="aboutModal" role="dialog" aria-modal="true">
+    <div class="window">
+      <header>About — ChilledCat Navigator</header>
+      <div class="body">
+        <p><strong>Netscrape ’95</strong> is a playful homage to classic Netscape/Win95 vibes — with a Chilled Cat twist. It’s a demo browser shell built in HTML/CSS/JS.</p>
+        <ul>
+          <li>Retro chrome with tabs, toolbar, status bar.</li>
+          <li>Start page <code>about:chill</code> and <code>about:credits</code>.</li>
+          <li>Basic history, back/forward, reload, stop.</li>
+          <li>Address bar handles URLs or searches.</li>
+          <li>Open local HTML files safely.</li>
+        </ul>
+        <p><em>Heads up:</em> many modern sites block being embedded in iframes. If a page refuses to load, try opening it directly in a new tab.</p>
+      </div>
+      <footer>
+        <button onclick="closeAbout()">OK</button>
+      </footer>
+    </div>
+  </div>
+
+<script>
+  // Simple history state for a single tab demo
+  const historyStack = [];
+  let historyIndex = -1;
+  const view = document.getElementById('view');
+  const urlInput = document.getElementById('url');
+  const throb = document.getElementById('throb');
+  const statusText = document.getElementById('statusText');
+
+  function toggleFullscreen(){
+    if(!document.fullscreenElement){ document.documentElement.requestFullscreen(); }
+    else{ document.exitFullscreen(); }
+  }
+
+  function openAbout(){ document.getElementById('aboutModal').style.display='flex'; }
+  function closeAbout(){ document.getElementById('aboutModal').style.display='none'; }
+
+  function setLoading(isLoading, msg=''){
+    throb.style.display = isLoading ? 'inline-block' : 'none';
+    statusText.textContent = isLoading ? (msg || 'Loading…') : 'Ready.';
+  }
+
+  function normalizeInput(input){
+    input = input.trim();
+    if(input.startsWith('about:')) return input; // internal
+    try { new URL(input); return input; } catch {}
+    // not a valid URL — treat as search
+    const q = encodeURIComponent(input);
+    return `https://duckduckgo.com/?q=${q}`;
+  }
+
+  function goURL(){
+    const input = urlInput.value;
+    navigate(normalizeInput(input));
+  }
+
+  function navigate(target){
+    if(target === 'about:blank'){
+      loadAboutBlank();
+      return;
+    }
+    if(target === 'about:chill'){
+      loadStartPage();
+      pushHistory(target);
+      return;
+    }
+    if(target === 'about:credits'){
+      loadCredits();
+      pushHistory(target);
+      return;
+    }
+    // External URL
+    urlInput.value = target;
+    setLoading(true, 'Contacting host…');
+    view.removeAttribute('srcdoc');
+    view.src = target;
+    pushHistory(target);
+  }
+
+  function pushHistory(href){
+    // Trim forward history
+    if(historyIndex < historyStack.length - 1){
+      historyStack.splice(historyIndex + 1);
+    }
+    historyStack.push(href);
+    historyIndex = historyStack.length - 1;
+    updateNavButtons();
+    updateTabTitle();
+  }
+
+  function updateNavButtons(){
+    document.getElementById('backBtn').disabled = historyIndex <= 0;
+    document.getElementById('fwdBtn').disabled = historyIndex >= historyStack.length - 1;
+  }
+
+  function goBack(){
+    if(historyIndex > 0){
+      historyIndex--; loadFromHistory();
+    }
+  }
+  function goForward(){
+    if(historyIndex < historyStack.length - 1){
+      historyIndex++; loadFromHistory();
+    }
+  }
+  function reloadFrame(){
+    const href = historyStack[historyIndex];
+    if(!href) return;
+    if(href.startsWith('about:')) navigate(href); else view.src = href;
+  }
+  function stopLoad(){
+    // best-effort stop by resetting src to current
+    const href = view.src; view.src = href;
+    setLoading(false,'Stopped.');
+  }
+
+  function loadFromHistory(){
+    const href = historyStack[historyIndex];
+    if(!href) return;
+    if(href.startsWith('about:')) navigate(href);
+    else { urlInput.value = href; view.src = href; }
+    updateNavButtons();
+    updateTabTitle();
+  }
+
+  function updateTabTitle(){
+    const tab = document.getElementById('tab-0').querySelector('span');
+    const href = historyStack[historyIndex] || 'Start — ChilledCat';
+    tab.textContent = href.startsWith('about:') ?
+      (href==='about:chill' ? 'Start — ChilledCat' : href.replace('about:','About: ')) :
+      href.replace(/^https?:\/\//,'');
+  }
+
+  // Handle iframe load events
+  view.addEventListener('load', ()=>{
+    setLoading(false);
+    // Try to adopt page title if same-origin
+    try{ document.title = (view.contentDocument.title || 'ChilledCat Navigator — Netscrape ’95'); }catch{}
+  });
+  view.addEventListener('error', ()=>{
+    setLoading(false,'Load error');
+  });
+
+  // File open -> blob URL
+  document.getElementById('fileOpen').addEventListener('change', (e)=>{
+    const file = e.target.files[0]; if(!file) return;
+    const url = URL.createObjectURL(file);
+    urlInput.value = url; navigate(url);
+  });
+
+  // Address bar Enter key
+  urlInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') goURL(); });
+
+  // Tabs API (single tab placeholder)
+  function newTab(target){
+    navigate(target || 'about:chill');
+  }
+  function activateTab(){ /* single-tab stub */ }
+  function closeTab(ev){ ev.stopPropagation(); navigate('about:chill'); }
+
+  // Internal pages
+  function loadStartPage(){
+    urlInput.value = 'about:chill';
+    const html = `<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Start — ChilledCat</title>
+      <style>body{margin:0;background:linear-gradient(180deg,#0b2a52,#081e3b);color:#eef6ff;font:14px Tahoma, sans-serif}
+      .wrap{max-width:760px;margin:40px auto;padding:16px}
+      h1{display:flex;align-items:center;gap:10px;font-size:22px;margin:0 0 10px}
+      .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:16px}
+      .card{background:#10335f;border:2px solid #06162e;border-radius:8px;padding:10px}
+      a{color:#ffec8a;text-decoration:none}
+      a:hover{text-decoration:underline}
+      .badge{display:inline-block;background:#173a73;padding:2px 6px;border-radius:4px;margin-left:6px}
+      .throb{width:20px;height:20px;border-radius:50%;border:3px solid #9cf;border-top-color:#1b3f7a;animation:spin 1s linear infinite}
+      @keyframes spin{to{transform:rotate(360deg)}}
+      </style></head><body>
+      <div class=\"wrap\">
+        <h1>🐾 ChilledCat Portal <span class=\"badge\">Netscrape ’95</span></h1>
+        <p>Welcome to your retro portal. Type a URL above or pick a tile:</p>
+        <div class=\"grid\">
+          <div class=\"card\"><b>Docs</b><br><a href=\"https://developer.mozilla.org/\" target=\"_top\">MDN Web Docs</a></div>
+          <div class=\"card\"><b>Search</b><br><a href=\"https://duckduckgo.com/\" target=\"_top\">DuckDuckGo</a></div>
+          <div class=\"card\"><b>Chill Zone</b><br><a href=\"https://example.com\" target=\"_top\">Example.com</a></div>
+          <div class=\"card\"><b>Local File</b><br>Use <em>Open</em> in the toolbar to view an HTML file.</div>
+        </div>
+        <p style=\"margin-top:18px\"><span class=\"throb\"></span> Tip: Some sites block embedding; if a page won’t load, open it directly in your browser.</p>
+      </div></body></html>`;
+    view.srcdoc = html;
+    setLoading(false);
+  }
+
+  function loadCredits(){
+    urlInput.value = 'about:credits';
+    const html = `<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Credits</title>
+      <style>body{margin:0;background:#0b2a52;color:#eef6ff;font:14px Tahoma, sans-serif;display:grid;place-items:center;height:100vh}
+      .card{background:#10335f;border:2px solid #06162e;border-radius:8px;padding:18px;max-width:560px}
+      h2{margin-top:0}
+      a{color:#ffec8a}
+      </style></head><body>
+      <div class=\"card\">
+        <h2>Credits</h2>
+        <ul>
+          <li>Design & vibe: <em>Chilled Cat</em> team</li>
+          <li>Homage: Netscape Navigator & Win95 UI</li>
+          <li>Tech: Vanilla HTML, CSS, JS</li>
+        </ul>
+        <p>Built as part of the <strong>Windows RC — Really Chill Edition</strong> project.</p>
+      </div>
+      </body></html>`;
+    view.srcdoc = html;
+    setLoading(false);
+  }
+
+  function loadAboutBlank(){
+    urlInput.value = 'about:blank';
+    view.srcdoc = '<!doctype html><title>Blank</title>';
+    setLoading(false);
+  }
+
+  // Initial
+  loadStartPage();
+
+</script>
+</body>
+</html>

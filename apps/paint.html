@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chilled Paint — Windows RC</title>
+  <style>
+    body { margin:0; background:#c0c0c0; font-family:sans-serif; }
+    .toolbar { background:#dcdcdc; padding:5px; display:flex; gap:5px; }
+    canvas { border:2px solid #808080; background:#fff; display:block; margin:10px auto; cursor:crosshair; }
+    button, input[type=color], input[type=range] { font-size:14px; }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <button id="brush">Brush</button>
+    <button id="eraser">Eraser</button>
+    <input type="color" id="color" value="#000000">
+    <input type="range" id="size" min="1" max="30" value="5">
+    <button id="clear">Clear</button>
+  </div>
+  <canvas id="paint" width="800" height="500"></canvas>
+
+  <script>
+    const canvas = document.getElementById('paint');
+    const ctx = canvas.getContext('2d');
+    const brushBtn = document.getElementById('brush');
+    const eraserBtn = document.getElementById('eraser');
+    const colorPicker = document.getElementById('color');
+    const sizePicker = document.getElementById('size');
+    const clearBtn = document.getElementById('clear');
+
+    let drawing = false;
+    let tool = 'brush';
+    let color = colorPicker.value;
+    let size = sizePicker.value;
+
+    function startDraw(e) {
+      drawing = true;
+      draw(e);
+    }
+    function endDraw() {
+      drawing = false;
+      ctx.beginPath();
+    }
+    function draw(e) {
+      if (!drawing) return;
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      ctx.lineWidth = size;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = tool === 'eraser' ? '#ffffff' : color;
+      ctx.lineTo(x, y);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+    }
+
+    canvas.addEventListener('mousedown', startDraw);
+    canvas.addEventListener('mouseup', endDraw);
+    canvas.addEventListener('mousemove', draw);
+
+    brushBtn.onclick = () => tool = 'brush';
+    eraserBtn.onclick = () => tool = 'eraser';
+    colorPicker.addEventListener('change', e => { color = e.target.value; });
+    sizePicker.addEventListener('input', e => size = e.target.value);
+    clearBtn.onclick = () => ctx.clearRect(0,0,canvas.width,canvas.height);
+  </script>
+</body>
+</html>

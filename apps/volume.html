@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Volume Control</title>
+<style>
+  body {
+    margin: 0;
+    background: #1a2a4f; /* deep blue */
+    font-family: "MS Sans Serif", sans-serif;
+    font-size: 12px;
+    color: #e0f0ff; /* soft blue-white */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+  }
+
+  .section {
+    border: 1px solid #4a6fb3;
+    background: #2b3d66;
+    text-align: center;
+    padding: 10px 20px;
+    box-shadow: inset 2px 2px #3c5a91, inset -2px -2px #0e1730;
+  }
+
+  .section-title {
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: #9ecbff;
+  }
+
+  /* Scrollbar track */
+  .scrollbar {
+    width: 24px;
+    height: 150px;
+    margin: 0 auto;
+    border: 2px inset #4a6fb3;
+    background: #203357;
+    position: relative;
+  }
+
+  /* Thumb (paw image) */
+  .thumb {
+    width: 24px;
+    height: 24px;
+    background: url("../media/icons/volume_scroll.png") center/contain no-repeat;
+    position: absolute;
+    top: 60px;
+    cursor: grab;
+  }
+  .thumb:active {
+    cursor: grabbing;
+    filter: brightness(0.8); /* darker pressed look */
+  }
+
+  /* Mute checkbox */
+  .mute {
+    margin-top: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 4px;
+    color: #c6dcff;
+  }
+
+  /* Volume percentage */
+  #volLabel {
+    margin-top: 6px;
+    font-weight: bold;
+    color: #9ecbff;
+  }
+</style>
+</head>
+<body>
+  <div class="section">
+    <div class="section-title">Volume</div>
+    <div class="scrollbar" id="scrollbar">
+      <div class="thumb" id="thumb"></div>
+    </div>
+    <div id="volLabel">50%</div>
+    <div class="mute">
+      <input type="checkbox" id="muteBox">
+      <label for="muteBox">Mute</label>
+    </div>
+  </div>
+
+<script>
+  const thumb = document.getElementById("thumb");
+  const scrollbar = document.getElementById("scrollbar");
+  const muteBox = document.getElementById("muteBox");
+  const volLabel = document.getElementById("volLabel");
+
+  let maxTop;
+
+  function init() {
+    maxTop = scrollbar.offsetHeight - thumb.offsetHeight;
+
+    // restore saved volume/mute
+    const savedVol = localStorage.getItem("rc-volume");
+    const savedMute = localStorage.getItem("rc-mute");
+    if (savedMute === "true") muteBox.checked = true;
+
+    if (savedVol !== null) {
+      setThumbPosition(maxTop - (savedVol/100 * maxTop));
+    } else {
+      setThumbPosition(maxTop/2); // middle default
+    }
+  }
+
+  function setThumbPosition(y) {
+    y = Math.max(0, Math.min(maxTop, y));
+    thumb.style.top = y + "px";
+
+    const vol = 1 - (y / maxTop); // invert
+    const percent = Math.round(vol * 100);
+
+    volLabel.textContent = muteBox.checked ? "Muted" : percent + "%";
+    applyVolume(muteBox.checked ? 0 : vol);
+
+    localStorage.setItem("rc-volume", percent);
+  }
+
+  function applyVolume(level) {
+    const mediaEls = window.top.document.querySelectorAll("audio, video");
+    mediaEls.forEach(el => { try { el.volume = level; } catch(e){} });
+  }
+
+  // Dragging
+  let dragging = false, startY, startTop;
+  thumb.addEventListener("mousedown", e => {
+    dragging = true;
+    startY = e.clientY;
+    startTop = parseInt(thumb.style.top) || 0;
+    document.addEventListener("mousemove", onDrag);
+    document.addEventListener("mouseup", stopDrag);
+  });
+
+  function onDrag(e) {
+    if (!dragging) return;
+    const dy = e.clientY - startY;
+    setThumbPosition(startTop + dy);
+  }
+
+  function stopDrag() {
+    dragging = false;
+    document.removeEventListener("mousemove", onDrag);
+    document.removeEventListener("mouseup", stopDrag);
+  }
+
+  // Mute toggle
+  muteBox.addEventListener("change", () => {
+    const y = parseInt(thumb.style.top) || 0;
+    const vol = 1 - (y / maxTop);
+    volLabel.textContent = muteBox.checked ? "Muted" : Math.round(vol*100) + "%";
+    applyVolume(muteBox.checked ? 0 : vol);
+    localStorage.setItem("rc-mute", muteBox.checked);
+  });
+
+  // Init after layout is ready
+  window.addEventListener("load", init);
+</script>
+</body>
+</html>

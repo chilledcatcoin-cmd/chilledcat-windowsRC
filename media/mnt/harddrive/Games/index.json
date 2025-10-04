@@ -1,0 +1,22 @@
+[
+  {
+    "name": "saves",
+    "path": "/media/mnt/main harddrive/Games/saves",
+    "type": "folder"
+  },
+  {
+    "name": "catsweeper97.exe",
+    "path": "/media/mnt/main harddrive/Games/catsweeper97.exe",
+    "type": "file"
+  },
+  {
+    "name": "chilled_clicker.bat",
+    "path": "/media/mnt/main harddrive/Games/chilled_clicker.bat",
+    "type": "file"
+  },
+  {
+    "name": "floppybird.cat",
+    "path": "/media/mnt/main harddrive/Games/floppybird.cat",
+    "type": "file"
+  }
+]

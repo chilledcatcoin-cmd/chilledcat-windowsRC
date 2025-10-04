@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="240" viewBox="0 0 640 240">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#00BFFF"/>
+      <stop offset="1" stop-color="#00008B"/>
+    </linearGradient>
+  </defs>
+  <rect width="100%" height="100%" fill="#000"/>
+  <g transform="translate(40,40)">
+    <rect x="0" y="0" width="160" height="160" fill="url(#g)"/>
+    <rect x="10" y="10" width="140" height="140" fill="#fff"/>
+    <rect x="20" y="20" width="120" height="120" fill="url(#g)"/>
+    <g font-family="Tahoma, Verdana, Arial, sans-serif" fill="#fff">
+      <text x="190" y="64" font-size="44">Windows <tspan fill="#9ec6ff">RC</tspan></text>
+      <text x="190" y="104" font-size="18" fill="#9ec6ff">Really Chill Edition</text>
+      <text x="190" y="152" font-size="14" fill="#9ec6ff">Win95-inspired UI framework (starter)</text>
+    </g>
+  </g>
+</svg>

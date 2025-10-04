@@ -1,0 +1,27 @@
+[
+  {
+    "name": "backgrounds",
+    "path": "/media/mnt/main harddrive/Pictures/backgrounds",
+    "type": "folder"
+  },
+  {
+    "name": "cat.png",
+    "path": "/media/mnt/main harddrive/Pictures/cat.png",
+    "type": "file"
+  },
+  {
+    "name": "chillcat_wallpaper.bmp",
+    "path": "/media/mnt/main harddrive/Pictures/chillcat_wallpaper.bmp",
+    "type": "file"
+  },
+  {
+    "name": "logo.gif",
+    "path": "/media/mnt/main harddrive/Pictures/logo.gif",
+    "type": "file"
+  },
+  {
+    "name": "team_photo.jpg",
+    "path": "/media/mnt/main harddrive/Pictures/team_photo.jpg",
+    "type": "file"
+  }
+]

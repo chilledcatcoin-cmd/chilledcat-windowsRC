@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Windows RC Desktop</title>
+<style>
+
+iframe.fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  border: none;
+  z-index: 9999; /* always above desktop */
+}
+
+.fullscreen button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 10000;
+  background: #c0c0c0;
+  border: 2px solid #808080;
+  padding: 4px 8px;
+  font-family: "MS Sans Serif", sans-serif;
+  cursor: pointer;
+}
+
+  body {
+    margin: 0;
+    background: url('./media/wallpaper.png') center/cover no-repeat;
+    height: 100vh;
+    overflow: hidden;
+    font-family: "MS Sans Serif", sans-serif;
+    color: white;
+  }
+  #desktop-area { width: 100%; height: calc(100% - 40px); position: relative; }
+  .icon {
+    position: absolute;
+    width: 80px;
+    text-align: center;
+    font-size: 12px;
+    user-select: none;
+    cursor: default;
+    color:white;
+    text-shadow: 0 1px 2px rgba(0,0,0,.6);
+    z-index:10;
+  }
+  .icon img { width: 32px; height: 32px; display: block; margin: 0 auto 4px; image-rendering: pixelated; }
+  iframe { border: none; }
+
+  /* Taskbar */
+#taskbar {
+  position: absolute;
+  bottom: 0; left: 0;
+  width: 100%;
+  height: 20px;                  
+  min-height: 32px;              /* classic Win95 thickness */
+  display: flex;
+  align-items: center;
+  background: #c0c0c0;
+  z-index: 1000;
+
+  border-top: 2px solid #fff;
+  border-left: 2px solid #fff;
+  border-right: 2px solid #808080;
+  border-bottom: 2px solid #808080;
+}
+#start-btn {
+  margin: 2px;                   /* tighter margin */
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #c0c0c0;
+  border: 2px outset #fff;
+  padding: 2px 6px;
+  cursor: pointer;
+  height: auto;                  /* <-- match content height */
+  width: auto;
+}
+#start-btn img {
+  height: 16px;                  /* Windows logo size */
+  width: auto;
+}
+#start-btn:active { border: 2px inset #808080; }
+  #start-btn img { display: block; height: 20px; width: auto; }
+  #start-btn.pressed { border: 2px inset #404040; background: #d0d0d0; }
+#taskbar-buttons {
+  flex: 1;
+  display: flex; align-items: center; gap: 4px;
+  margin: 0 4px; /* small spacing */
+  padding: 2px 4px;
+  height: calc(100% - 8px);
+  background: #c0c0c0;
+  /* no extra border here, so it blends cleanly */
+}
+.task-btn {
+  background: #c0c0c0;
+  border: 2px outset #fff;
+  padding: 2px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  min-width: 80px;
+  text-align: left;
+}
+.task-btn.active {
+  border: 2px inset #808080;
+  background: #000080;
+  color: #fff;
+}
+#tray {
+  width: 200px;
+  height: calc(100% - 6px);
+  margin: 3px 4px 3px 0;
+  background: #c0c0c0;
+
+  /* subtle 3D inset border like Win95 tray */
+  border-top: 1px solid #808080;
+  border-left: 1px solid #808080;
+  border-right: 1px solid #fff;
+  border-bottom: 1px solid #fff;
+}
+
+  /* Start menu iframe */
+  #startmenu {
+    position: absolute;
+    bottom: 40px;
+    left: 5px;
+    width: 260px;
+    border: 2px solid #000;
+    z-index: 2000;
+    background:#c0c0c0;
+    transform: translateY(20px);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.2s ease-out, opacity 0.2s ease-out;
+  }
+  #startmenu.show { transform: translateY(0); opacity: 1; pointer-events: auto; }
+
+  /* Shutdown overlay */
+  #overlay { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.3); z-index: 3000; }
+  #overlay iframe { width: 400px; height: 220px; border: none; }
+
+  /* Windows */
+  .win { background: #c0c0c0; border: 2px solid #000; box-shadow: 2px 2px #404040; position: absolute; z-index:100; }
+  .titlebar { background: #000080; color: #fff; padding: 2px 4px; cursor: move; display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+  .titlebar .buttons { display: flex; gap: 2px; }
+  .titlebar .buttons button {
+    width: 20px; height: 20px; border: 1px solid #808080; background: #c0c0c0;
+    font-size: 12px; font-weight: bold; line-height: 16px; padding: 0; cursor: pointer; text-align: center;
+  }
+  .titlebar .buttons button:active { border: 1px inset #404040; }
+
+  /* Resize handles */
+  .resize-handle { position: absolute; background: transparent; }
+  .resize-handle.right { top: 0; right: 0; width: 6px; height: 100%; cursor: ew-resize; }
+  .resize-handle.bottom { bottom: 0; left: 0; width: 100%; height: 6px; cursor: ns-resize; }
+  .resize-handle.corner {
+    right: 0; bottom: 0; width: 12px; height: 12px; cursor: nwse-resize;
+    background: repeating-linear-gradient(135deg,#808080,#808080 2px,#c0c0c0 2px,#c0c0c0 4px);
+  }
+
+  /* Desktop context menu */
+  #desktop-menu {
+    position: absolute;
+    display: none;
+    background: #c0c0c0;
+    border: 2px outset #fff;
+    box-shadow: 2px 2px #808080;
+    font-size: 12px;
+    z-index: 5000;
+    width: 160px;
+    color: black;
+  }
+  #desktop-menu div { padding: 4px 10px; cursor: default; }
+  #desktop-menu div:hover { background: #000080; color: white; }
+  #desktop-menu .checked::before { content: "✔ "; }
+</style>
+</head>
+<body>
+  <div id="desktop-area"></div>
+
+  <!-- Start Menu -->
+  <iframe id="startmenu" src="./system/startmenu.html"></iframe>
+
+  <!-- Taskbar -->
+  <div id="taskbar">
+    <div id="start-btn"><img src="./media/start-button.png" alt="Start" height="20"></div>
+    <div id="taskbar-buttons"></div>
+    <iframe id="tray" src="./system/taskbar_with_tray.html"></iframe>
+  </div>
+
+  <!-- Shutdown Overlay -->
+  <div id="overlay"><iframe id="shutdownDialog" src=""></iframe></div>
+
+  <!-- Hidden shutdown audio -->
+  <audio id="shutdown-audio" src="./media/shutdown.mp3"></audio>
+
+  <!-- Desktop Context Menu -->
+  <div id="desktop-menu">
+    <div data-action="align">Align to Grid</div>
+    <div data-action="auto">Auto Arrange</div>
+  </div>
+
+<script>
+  const desktop=document.getElementById('desktop-area');
+  const menu=document.getElementById('startmenu');
+  const taskButtons=document.getElementById('taskbar-buttons');
+  const startBtn=document.getElementById('start-btn');
+  let zTop=200;
+  let winCount=0;
+  const windows=new Map();
+
+  // Grid
+  const gridSize=80, iconSpacingY=80, gridOffsetX=20, gridOffsetY=40;
+
+  // Icons
+  const icons=[
+    {id:'mycomputer',title:'My Computer',icon:'./media/icons/mycomputer.png',app:'apps/mycomputer.html',width:600,height:400},
+    {id:'litterbin', title:'Litter Bin', icon:'./media/icons/litterbin.png', app:'apps/litterbin.html', width:600, height:400},
+    {id:'paint',title:'Chilled Paint',icon:'./media/icons/app_paint.png',app:'apps/paint.html',width:640,height:480},
+    {id:'chillpad',title:'Chillpad',icon:'./media/icons/app_chillpad.png',app:'apps/chillpad.html',width:600,height:400},
+    {id:'catculator',title:'Catculator',icon:'./media/icons/app_catculator.png',app:'apps/catculator.html',width:300,height:400},
+    {id:'mines',title:'CatSweeper',icon:'./media/icons/app_mines.png',app:'apps/minesweeper.html'},
+    {id:'catclicker',title:'Cat Clicker ’97+',icon:'./media/icons/app_catclicker.png',app:'apps/catclicker.html',width:800,height:600},
+    {id:'flappycat',title:'Flappy Cat',icon:'./media/icons/app_flappycat.png',app:'apps/flappycat.html'},
+    {id:'chillscape', title:'ChillScape Navigator', icon:'./media/icons/chillscape.png', app:'apps/chillscape.html'}
+  ];
+
+  const trayApps={
+    volume:{id:'volume',title:'Volume Control',icon:'./media/icons/volume.png',app:'apps/volume.html',width:160,height:320},
+    network:{id:'network',title:'Network Connections',icon:'./media/icons/network.png',app:'apps/network.html',width:520,height:280},
+    clock:{id:'clock',title:'Chilled Cat Clock',icon:'./media/icons/clock.png',app:'apps/clock.html',width:300,height:450}
+  };
+
+  function idToTitle(id){const ic=icons.find(i=>i.id===id)||trayApps[id];return ic?ic.title:id;}
+
+  // Create icons
+  icons.forEach((ic,idx)=>{
+    const el=document.createElement('div');
+    el.className='icon';
+    const col=Math.floor(idx/7),row=idx%7;
+    el.style.left=(gridOffsetX+col*gridSize)+'px';
+    el.style.top=(gridOffsetY+row*iconSpacingY)+'px';
+    el.innerHTML=`<img src="${ic.icon}"><div>${ic.title}</div>`;
+    el.addEventListener('dblclick',()=>openApp(ic));
+    makeIconDraggable(el);
+    desktop.appendChild(el);
+  });
+
+  function snapToGrid(el){
+    const x=Math.round((el.offsetLeft-gridOffsetX)/gridSize)*gridSize+gridOffsetX;
+    const y=Math.round((el.offsetTop-gridOffsetY)/iconSpacingY)*iconSpacingY+gridOffsetY;
+    el.style.left=x+'px';el.style.top=y+'px';
+  }
+
+  function makeIconDraggable(el){
+    let offsetX,offsetY,dragging=false;
+    el.addEventListener('mousedown',e=>{
+      if(e.button!==0)return;
+      dragging=true;
+      offsetX=e.clientX-el.offsetLeft;offsetY=e.clientY-el.offsetTop;
+      function move(ev){if(dragging){el.style.left=(ev.clientX-offsetX)+'px';el.style.top=(ev.clientY-offsetY)+'px';}}
+      function up(){dragging=false;document.removeEventListener('mousemove',move);document.removeEventListener('mouseup',up);snapToGrid(el);}
+      document.addEventListener('mousemove',move);document.addEventListener('mouseup',up);
+    });
+  }
+
+  window.addEventListener("load",()=>{[...desktop.querySelectorAll('.icon')].forEach(el=>snapToGrid(el));});
+
+  // Context menu
+  const ctxMenu=document.getElementById('desktop-menu');
+  desktop.addEventListener('contextmenu',e=>{
+    e.preventDefault();
+    ctxMenu.style.left=e.clientX+'px';ctxMenu.style.top=e.clientY+'px';
+    ctxMenu.style.display='block';
+  });
+  document.addEventListener('click',()=>ctxMenu.style.display='none');
+  ctxMenu.addEventListener('click',e=>{
+    if(e.target.dataset.action==='align'){[...desktop.querySelectorAll('.icon')].forEach(el=>snapToGrid(el));}
+    if(e.target.dataset.action==='auto'){[...desktop.querySelectorAll('.icon')].forEach((el,idx)=>{const col=Math.floor(idx/7),row=idx%7;el.style.left=(gridOffsetX+col*gridSize)+'px';el.style.top=(gridOffsetY+row*iconSpacingY)+'px';});}
+  });
+
+  // Start menu toggle
+  startBtn.addEventListener('click',()=>{menu.classList.toggle('show');startBtn.classList.toggle('pressed');});
+  document.addEventListener("mousedown",(e)=>{if(!menu.contains(e.target)&&!startBtn.contains(e.target)){menu.classList.remove('show');startBtn.classList.remove("pressed");}});
+
+// === Window system ===
+function openApp(icOrId){
+  let ic = (typeof icOrId==="string")
+    ? (icons.find(i=>i.id===icOrId) || trayApps[icOrId])
+    : icOrId;
+  if(!ic) return;
+
+  // If already open, just focus it
+  if (windows.has(ic.id)) { focusWin(windows.get(ic.id)); return; }
+
+  const win = document.createElement('div');
+  win.className = 'win';
+  win.dataset.id = ic.id;
+// Default offsets
+let left = 60 + (winCount * 20) % 200;
+let top  = 60 + (winCount * 20) % 160;
+
+// Clamp so the window never spawns outside the desktop
+left = Math.min(left, desktop.offsetWidth  - (ic.width  || 480) - 40);
+top  = Math.min(top,  desktop.offsetHeight - (ic.height || 360) - 40);
+
+win.style.left = left + "px";
+win.style.top  = top  + "px";
+  win.style.zIndex = ++zTop;
+
+  // Choose a good "restore" size for every app
+  const restoreW = ic.width  || 800;
+  const restoreH = ic.height || 600;
+
+  // If this is flappycat, start maximized but keep restore size saved
+  let w, h, startMaxed = false;
+  if (ic.id === "flappycat" || ic.id === "mines" || ic.id === "chillscape") {
+    w = desktop.offsetWidth;
+    h = desktop.offsetHeight; // desktop area already excludes the taskbar
+    win.style.left = "0px";
+    win.style.top  = "0px";
+    startMaxed = true;
+  } else {
+    w = restoreW;
+    h = restoreH;
+  }
+
+  // Persist sizes
+  win.style.width  = w + "px";
+  win.style.height = h + "px";
+  win.dataset.origWidth  = restoreW;   // restore target
+  win.dataset.origHeight = restoreH;
+
+  win.innerHTML = `
+    <div class="titlebar" onmousedown="dragStart(event,this.parentElement)">
+      <span>${ic.title}</span>
+      <div class="buttons">
+        <button onclick="minimizeWin('${ic.id}')">_</button>
+        <button onclick="maximizeWin('${ic.id}')" class="max-btn">${startMaxed ? "❐" : "▭"}</button>
+        <button onclick="closeWin('${ic.id}')">X</button>
+      </div>
+    </div>
+    <!-- Make the app fill the window below the titlebar -->
+    <iframe src="${ic.app}" style="width:100%; height: calc(100% - 24px); border:0;"></iframe>
+    <div class="resize-handle right"></div>
+    <div class="resize-handle bottom"></div>
+    <div class="resize-handle corner"></div>
+  `;
+
+  // Mark maximized state if we started that way
+  if (startMaxed) win.dataset.maxed = "true";
+
+  desktop.appendChild(win);
+  windows.set(ic.id, win);
+  winCount++;
+
+  // Taskbar button
+  const btn = document.createElement('button');
+  btn.textContent = idToTitle(ic.id);
+  btn.className = 'task-btn active';
+  btn.onclick = () => restoreWin(ic.id);
+  taskButtons.appendChild(btn);
+
+  focusWin(win);
+  addResize(win);
+}
+
+  function focusWin(win){
+    win.style.display='block';
+    win.style.zIndex=++zTop;
+    [...taskButtons.children].forEach(b=>b.classList.remove('active'));
+    const title=win.querySelector('.titlebar span').textContent;
+    const btn=[...taskButtons.children].find(b=>b.textContent===title);
+    if(btn)btn.classList.add('active');
+  }
+
+  window.closeWin=(id)=>{
+    const w=windows.get(id); if(!w)return;
+    w.remove(); windows.delete(id);
+    const btn=[...taskButtons.children].find(b=>b.textContent===idToTitle(id));
+    if(btn)btn.remove();
+  };
+
+  window.minimizeWin=(id)=>{
+    const w=windows.get(id); if(!w)return;
+    w.style.display='none';
+    [...taskButtons.children].forEach(b=>b.classList.remove('active'));
+  };
+
+  function restoreWin(id){
+    const w=windows.get(id); if(!w)return;
+    w.style.display='block'; focusWin(w);
+  }
+
+window.maximizeWin = (id) => {
+  const w = windows.get(id);
+  if (!w) return;
+  const btn = w.querySelector('.max-btn');
+
+  if (w.dataset.maxed) {
+    // restore
+    w.style.width  = w.dataset.origWidth  + 'px';
+    w.style.height = w.dataset.origHeight + 'px';
+    w.style.left = '60px';
+    w.style.top  = '60px';
+    w.dataset.maxed = '';
+    btn.textContent = "▭";
+  } else {
+    // maximize to desktop area (which already excludes the taskbar)
+    w.style.left = '0';
+    w.style.top  = '0';
+    w.style.width  = desktop.offsetWidth + 'px';
+    w.style.height = desktop.offsetHeight + 'px';
+    w.dataset.maxed = 'true';
+    btn.textContent = "❐";
+  }
+};
+
+  // Dragging windows
+  let dragTarget=null,offsetX2=0,offsetY2=0;
+  window.dragStart=(e,win)=>{
+    dragTarget=win;
+    offsetX2=e.clientX-win.offsetLeft;
+    offsetY2=e.clientY-win.offsetTop;
+    document.onmousemove=dragMoveWin;
+    document.onmouseup=dragEndWin;
+  };
+  function dragMoveWin(e){if(dragTarget){dragTarget.style.left=(e.clientX-offsetX2)+'px';dragTarget.style.top=(e.clientY-offsetY2)+'px';}}
+  function dragEndWin(){dragTarget=null;document.onmousemove=null;document.onmouseup=null;}
+
+function addResize(win) {
+  const right = win.querySelector('.resize-handle.right');
+  const bottom = win.querySelector('.resize-handle.bottom');
+  const corner = win.querySelector('.resize-handle.corner');
+  let overlay, startX, startY, startW, startH, dir;
+
+  function startResize(e, d) {
+    e.preventDefault();
+    dir = d;
+    startX = e.clientX;
+    startY = e.clientY;
+    startW = win.offsetWidth;
+    startH = win.offsetHeight;
+
+    // 🧱 overlay prevents iframes from eating mouse events
+    overlay = document.createElement('div');
+    overlay.style.position = 'fixed';
+    overlay.style.inset = '0';
+    overlay.style.zIndex = 99999;
+    overlay.style.cursor =
+      d === 'right' ? 'ew-resize' :
+      d === 'bottom' ? 'ns-resize' : 'nwse-resize';
+    overlay.style.background = 'transparent';
+    document.body.appendChild(overlay);
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', stopResize);
+  }
+
+  function onMove(e) {
+    if (!overlay) return;
+    if (dir === 'right' || dir === 'corner') {
+      win.style.width = Math.max(200, startW + (e.clientX - startX)) + 'px';
+    }
+    if (dir === 'bottom' || dir === 'corner') {
+      win.style.height = Math.max(150, startH + (e.clientY - startY)) + 'px';
+    }
+  }
+
+  function stopResize() {
+    if (overlay) overlay.remove();
+    overlay = null;
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', stopResize);
+  }
+
+  right.addEventListener('mousedown', e => startResize(e, 'right'));
+  bottom.addEventListener('mousedown', e => startResize(e, 'bottom'));
+  corner.addEventListener('mousedown', e => startResize(e, 'corner'));
+}
+
+
+  // Tray messages + shutdown
+  window.addEventListener('message', e=>{
+    if(e.data==='toggle-volume')openApp('volume');
+    if(e.data==='toggle-network')openApp('network');
+    if(e.data==='toggle-clock')openApp('clock');
+    if(e.data==='open-shutdown-dialog')openShutdownDialog();
+    if(e.data==='close-shutdown-dialog')closeShutdownDialog();
+    if(e.data.type==='shutdown-choice'){closeShutdownDialog();
+      if(e.data.choice==='shutdown'){window.location.href='./system/shutdown_wait.html?next=./safe_to_power_off.html';}
+            else if(e.data.choice==='restart'){
+        window.location.href='./system/shutdown_wait.html?next=../index.html';
+      }
+      else if(e.data.choice==='msdos'){
+        window.location.href='./system/shutdown_wait.html?next=./cmd.html';
+      }
+    }
+  });
+
+  function openShutdownDialog(){
+    const overlay=document.getElementById("overlay");
+    const frame=document.getElementById("shutdownDialog");
+    frame.src="./system/shutdown_dialog.html";
+    overlay.style.display="flex";
+  }
+
+  function closeShutdownDialog(){
+    document.getElementById("overlay").style.display="none";
+    document.getElementById("shutdownDialog").src="";
+  }
+
+  // === Screensaver Handling ===
+  let screensaverTimer;
+  const SCREENSAVER_DELAY = 2 * 60 * 1000; // 2 minutes
+
+  function resetScreensaverTimer() {
+    clearTimeout(screensaverTimer);
+    screensaverTimer = setTimeout(startScreensaver, SCREENSAVER_DELAY);
+  }
+
+  function startScreensaver() {
+    const saver = document.createElement("iframe");
+    saver.id = "screensaver";
+    saver.src = "./system/screensaver.html";
+    saver.style.position = "fixed";
+    saver.style.top = 0;
+    saver.style.left = 0;
+    saver.style.width = "100%";
+    saver.style.height = "100%";
+    saver.style.zIndex = 9999;
+    saver.style.border = "none";
+    saver.setAttribute("tabindex","0");
+    document.body.appendChild(saver);
+    saver.focus();
+
+    function exitSaver() {
+      saver.remove();
+      window.removeEventListener("message", onMessage);
+      window.removeEventListener("keydown", onKeyDown);
+      resetScreensaverTimer();
+    }
+
+    function onMessage(e) {
+      if (e.data === "exit-screensaver") {
+        exitSaver();
+      }
+    }
+
+    function onKeyDown() {
+      exitSaver();
+    }
+
+    window.addEventListener("message", onMessage);
+    window.addEventListener("keydown", onKeyDown);
+  }
+
+  // Reset timer on any desktop activity
+  ["mousemove","keydown","mousedown","touchstart"].forEach(evt => {
+    addEventListener(evt, resetScreensaverTimer);
+  });
+
+function closeStartMenu() {
+  const startMenu = document.getElementById("startmenu");
+  const startBtn  = document.getElementById("start-btn");
+  if (startMenu) startMenu.classList.remove("show");
+  if (startBtn)  startBtn.classList.remove("pressed");
+}
+
+window.addEventListener("message", (e) => {
+  if (e.data.type === "open-popup") {
+    const id = e.data.id;
+    const map = {
+      find: "./apps/find.html",
+      settings: "./apps/settings.html",
+      help: "./apps/help.html",
+      run: "./apps/run.html"
+    };
+
+    if (map[id]) {
+
+      closeStartMenu();
+
+      // Default popup size
+      let w = 400, h = 300;
+
+      // Custom sizes for specific popups
+      if (id === "find")     { w = 650; h = 350; }
+      if (id === "settings") { w = 480; h = 400; }
+      if (id === "help")     { w = 500; h = 400; }
+      if (id === "run")      { w = 320; h = 160; }
+
+      openApp({
+        id,
+        title: id.charAt(0).toUpperCase() + id.slice(1),
+        icon: "./media/icons/" + id + ".png",
+        app: map[id],
+        width: w,
+        height: h
+      });
+    }
+  }
+});
+
+
+// Handle start menu resize
+window.addEventListener("message", (e) => {
+  if (e.data.type === "resize-startmenu") {
+    const frame = document.getElementById("startmenu");
+    if (frame) {
+      frame.style.height = e.data.height + "px";
+    }
+  }
+});
+
+// === Run dialog communication ===
+window.addEventListener("message", (e) => {
+  console.log("[DESKTOP] Message received:", e.data);
+
+  if (!e.data || !e.data.type) return;
+
+  // 1. Easter Egg popups
+  if (e.data.type === "showMessage") {
+    const msg = e.data.text || "(no text)";
+    console.log("[DESKTOP] showMessage:", msg);
+
+    const box = document.createElement("div");
+    box.className = "msgbox";
+    box.style.position = "fixed";
+    box.style.left = "50%";
+    box.style.top = "50%";
+    box.style.transform = "translate(-50%, -50%)";
+    box.style.background = "#c0c0c0";
+    box.style.border = "2px outset #fff";
+    box.style.padding = "10px 14px";
+    box.style.fontFamily = '"MS Sans Serif", sans-serif';
+    box.style.fontSize = "13px";
+    box.style.color = "#000";
+    box.style.boxShadow = "3px 3px #808080";
+    box.style.zIndex = 99999;
+    box.innerHTML = `
+      <div style="margin-bottom:8px;">${msg}</div>
+      <div style="text-align:right;">
+        <button style="font-family:'MS Sans Serif';font-size:12px;padding:1px 8px;">OK</button>
+      </div>
+    `;
+    document.body.appendChild(box);
+    box.querySelector("button").addEventListener("click", () => box.remove());
+  }
+
+  // 2. Launch app requests
+  if (e.data.type === "openApp") {
+    console.log("[DESKTOP] openApp request for", e.data.app);
+    const path = e.data.app;
+    const id = path.split("/").pop().replace(".html", "");
+
+    if (windows.has("run")) closeWin("run");
+
+    openApp({
+      id,
+      title: id.charAt(0).toUpperCase() + id.slice(1),
+      icon: "./media/icons/" + id + ".png",
+      app: path,
+      width: 600,
+      height: 400
+    });
+  }
+
+  // 3. Close Run
+  if (e.data.type === "closeRun") {
+    console.log("[DESKTOP] Closing Run window");
+    if (windows.has("run")) closeWin("run");
+  }
+});
+
+
+  resetScreensaverTimer();
+</script>
+</body>
+</html>

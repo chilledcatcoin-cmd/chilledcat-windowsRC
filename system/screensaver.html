@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Chilled Cat Screensaver</title>
+<style>
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: black;
+    overflow: hidden;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+</style>
+</head>
+<body>
+<canvas id="screen"></canvas>
+<script>
+const canvas = document.getElementById("screen");
+const ctx = canvas.getContext("2d");
+function resize(){ canvas.width = innerWidth; canvas.height = innerHeight; }
+resize();
+window.addEventListener("resize", resize);
+
+// Collect all sticker paths (premium + regular)
+const stickerPaths = [];
+for (let i=1; i<=4; i++) {
+  stickerPaths.push(`../media/stickers/premium_sticker${i}.webp`);
+}
+for (let i=1; i<=20; i++) {
+  stickerPaths.push(`../media/stickers/sticker_${i}.webp`);
+}
+
+// Load all stickers
+const stickers = stickerPaths.map(src => {
+  const img = new Image();
+  img.src = src;
+  return img;
+});
+
+// Sprite list
+const sprites = [];
+const NUM_SPRITES = 10; // how many to bounce at once
+
+function initSprites() {
+  for (let i=0; i<NUM_SPRITES; i++) {
+    const img = stickers[Math.floor(Math.random()*stickers.length)];
+    const size = 96 + Math.random()*64; // random size 96–160px
+    sprites.push({
+      img,
+      x: Math.random() * (canvas.width-size),
+      y: Math.random() * (canvas.height-size),
+      w: size,
+      h: size,
+      dx: (Math.random()*2+1) * (Math.random()<0.5?-1:1),
+      dy: (Math.random()*2+1) * (Math.random()<0.5?-1:1)
+    });
+  }
+}
+
+function draw() {
+  ctx.fillStyle="black";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  for (const s of sprites) {
+    if (s.img.complete) {
+      ctx.drawImage(s.img, s.x, s.y, s.w, s.h);
+    }
+    s.x += s.dx;
+    s.y += s.dy;
+    if (s.x < 0 || s.x + s.w > canvas.width) s.dx *= -1;
+    if (s.y < 0 || s.y + s.h > canvas.height) s.dy *= -1;
+  }
+
+  requestAnimationFrame(draw);
+}
+
+// Wait for all sticker images to load
+Promise.all(stickers.map(s => new Promise(res => s.onload = res)))
+  .then(() => { initSprites(); draw(); });
+
+function exitSaver() {
+  window.parent.postMessage("exit-screensaver", "*");
+}
+
+// Mouse & touch inside iframe
+["mousemove","mousedown","touchstart"].forEach(evt => {
+  window.addEventListener(evt, exitSaver, { once:true });
+});
+
+// Keyboard must be trapped on the whole document (iframe needs focus)
+window.addEventListener("keydown", exitSaver);
+
+
+</script>
+</body>
+</html>

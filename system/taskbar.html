@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body {
+      margin: 0;
+      background: #c0c0c0;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-family: "MS Sans Serif", sans-serif;
+      font-size: 14px;
+
+      /* Win95 raised look */
+      border-top: 2px solid #fff;        /* highlight */
+      box-shadow: inset 0 2px #808080;   /* shadow just under top */
+      box-sizing: border-box;
+    }
+
+    .left { display: flex; align-items: center; }
+    .middle { flex: 1; }
+
+    #start-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #e0e0e0;
+      border: 2px outset #fff;
+      padding: 2px 8px;
+      margin-left: 5px;
+      cursor: pointer;
+      height: 30px;
+    }
+    #start-btn:active { border: 2px inset #fff; }
+    #start-btn img { height: 100%; display: block; }
+  </style>
+</head>
+<body>
+  <div class="left">
+    <div id="start-btn">
+      <img src="../media/start-button.png" alt="Start">
+    </div>
+  </div>
+  <div class="middle"></div>
+
+  <script>
+    const btn = document.getElementById("start-btn");
+    btn.addEventListener("click", () => {
+      parent.postMessage("toggle-startmenu", "*");
+    });
+  </script>
+</body>
+</html>

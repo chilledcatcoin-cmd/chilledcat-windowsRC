@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Chilled Cat Clock</title>
+<style>
+  body {
+    margin: 0;
+    background: #c0c0c0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+  }
+  .clock { position: relative; width: 200px; height: auto; }
+  #clock-face { width: 100%; height: auto; display: block; user-select: none; -webkit-user-drag: none; }
+
+  /* Hands */
+  .hand { 
+    position: absolute; 
+    transform-origin: left center; 
+    will-change: transform; 
+    pointer-events: none;
+  }
+  .hand.hour   { height: 6px; background: #004080; } /* dark blue */
+  .hand.minute { height: 4px; background: #004080; }
+  .hand.second { height: 2px; background: red; }
+
+  .center-dot {
+    position: absolute; width: 10px; height: 10px; background: black;
+    border-radius: 50%; transform: translate(-50%, -50%);
+  }
+
+  /* Eyes */
+  .eye {
+    position: absolute;
+    overflow: hidden;
+    border-radius: 50%; 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+  .pupil {
+    background: black;
+    border-radius: 50%;
+    will-change: transform;
+    animation: eye-move 2s infinite ease-in-out;
+  }
+  @keyframes eye-move {
+    0%   { transform: translateX(30%); }
+    50%  { transform: translateX(-30%); }
+    100% { transform: translateX(30%); }
+  }
+
+  /* Tail */
+  .tail {
+    position: absolute; background: #0991fa; border-radius: 50%;
+    transform-origin: top center; animation: swing 2s infinite ease-in-out;
+    pointer-events: none;
+  }
+  @keyframes swing { 0%{transform:rotate(20deg)} 50%{transform:rotate(-20deg)} 100%{transform:rotate(20deg)} }
+</style>
+</head>
+<body>
+  <div class="clock">
+    <img id="clock-face" src="../media/chilled_cat_clock.png" alt="Chilled Cat Clock">
+
+    <!-- Eyes -->
+    <div class="eye left"><div class="pupil"></div></div>
+    <div class="eye right"><div class="pupil"></div></div>
+
+    <!-- Hands -->
+    <div class="hand hour" id="hour"></div>
+    <div class="hand minute" id="minute"></div>
+    <div class="hand second" id="second"></div>
+    <div class="center-dot" id="dot"></div>
+
+    <!-- Tail -->
+    <div class="tail" id="tail"></div>
+  </div>
+
+<script>
+/* Original image size (pixels) */
+const naturalWidth  = 1024;
+const naturalHeight = 1536;
+
+/* Anchor coordinates */
+const coords = {
+  center:  { x: 508, y: 819 },
+  leftEye: { x: 393, y: 259, w: 40, h: 30 },
+  rightEye:{ x: 642, y: 259, w: 40, h: 30 },
+  tail:    { x: 511, y: 1338 }
+};
+
+const ANGLE_OFFSET = -90; // rotate 0° = 12 o’clock
+
+function rescale() {
+  const face   = document.getElementById("clock-face");
+  const rect   = face.getBoundingClientRect();
+  const scaleX = rect.width  / naturalWidth;
+  const scaleY = rect.height / naturalHeight;
+  const scale  = (scaleX + scaleY) / 2;
+
+  const radius = 200 * scale;
+
+  const minuteLen = radius * 0.85;
+  const secondLen = radius * 0.85;
+  const hourLen   = minuteLen * 0.6;
+
+  const cx = Math.round(coords.center.x * scaleX);
+  const cy = Math.round(coords.center.y * scaleY);
+
+  const hour   = document.getElementById("hour");
+  const minute = document.getElementById("minute");
+  const second = document.getElementById("second");
+
+  hour.style.width   = hourLen   + "px";
+  minute.style.width = minuteLen + "px";
+  second.style.width = secondLen + "px";
+
+  [hour,minute,second].forEach(el => { 
+    el.style.left = cx + "px"; 
+    el.style.top  = (cy - el.offsetHeight/2) + "px"; 
+  });
+
+  const dot = document.getElementById("dot");
+  dot.style.left = cx + "px";
+  dot.style.top  = cy + "px";
+
+  // Eyes
+  const eyes = [
+    { el: document.querySelector(".eye.left"),  c: coords.leftEye },
+    { el: document.querySelector(".eye.right"), c: coords.rightEye }
+  ];
+  eyes.forEach(({el,c})=>{
+    el.style.left   = (c.x * scaleX) + "px";
+    el.style.top    = (c.y * scaleY) + "px";
+    el.style.width  = (c.w * scaleX) + "px";
+    el.style.height = (c.h * scaleY) + "px";
+
+    const pupil = el.querySelector(".pupil");
+    pupil.style.width  = (c.w * scaleX * 0.5) + "px"; // 50% of socket
+    pupil.style.height = (c.h * scaleY * 0.5) + "px"; // 50% of socket
+  });
+
+  // Tail
+  const tail = document.getElementById("tail");
+  const tailLen   = radius * 2.2;
+  const tailThick = radius * 0.32;
+  tail.style.height = tailLen + "px";
+  tail.style.width  = tailThick + "px";
+  tail.style.left   = (coords.tail.x * scaleX - tailThick/2) + "px";
+  tail.style.top    = (coords.tail.y * scaleY) + "px";
+}
+
+function updateClockSmooth() {
+  const now = new Date();
+  const ms = now.getMilliseconds();
+  const s = now.getSeconds() + ms / 1000;
+  const m = now.getMinutes() + s / 60;
+  const h = now.getHours()   + m / 60;
+
+  const secDeg =  s * 6 + ANGLE_OFFSET;
+  const minDeg =  m * 6 + ANGLE_OFFSET;
+  const hrDeg  = (h % 12) * 30 + ANGLE_OFFSET;
+
+  document.getElementById("second").style.transform = `rotate(${secDeg}deg)`;
+  document.getElementById("minute").style.transform = `rotate(${minDeg}deg)`;
+  document.getElementById("hour").style.transform   = `rotate(${hrDeg}deg)`;
+
+  requestAnimationFrame(updateClockSmooth);
+}
+
+// Ensure layout done after image loads
+document.getElementById('clock-face').addEventListener('load', rescale);
+window.addEventListener('resize', rescale);
+window.addEventListener('load', () => {
+  rescale();
+  requestAnimationFrame(updateClockSmooth);
+});
+</script>
+</body>
+</html>

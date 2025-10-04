@@ -1,0 +1,1 @@
+Welcome to the Windows RC demo drive (C:).

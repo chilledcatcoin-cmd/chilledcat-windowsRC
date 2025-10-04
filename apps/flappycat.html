@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Chilled Flappy Cat — Tribute to Flappy Bird</title>
+  <style>
+    :root {--bg:#87ceeb;--ground:#7c5b3a;--grass:#7ed957;--pipe:#3cb043;--ui:#111;}
+    html,body{
+      margin:0;height:100%;background:var(--bg);
+      font-family:system-ui;color:var(--ui);
+      overscroll-behavior:none;touch-action:none;
+      overflow:hidden;
+    }
+    .wrap{display:flex;justify-content:center;align-items:center;height:100%}
+    canvas{
+      image-rendering:pixelated;image-rendering:crisp-edges;
+      background:linear-gradient(#aee8ff,#87ceeb 60%,#79b2e9);
+      border-radius:16px;box-shadow:0 20px 40px rgba(0,0,0,.2)
+    }
+    .hud{position:fixed;inset:0;display:grid;place-items:start center;pointer-events:none}
+    .topbar{pointer-events:auto;position:absolute;top:10px;right:10px;display:flex;gap:8px;align-items:center;background:rgba(255,255,255,.7);border-radius:999px;padding:6px 10px}
+    .topbar .btn{border:0;background:#222;color:#fff;padding:6px 10px;border-radius:999px;font-weight:700;cursor:pointer}
+    .card{pointer-events:auto;position:absolute;bottom:16px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,.9);padding:10px 14px;border-radius:12px;display:flex;gap:10px;align-items:center;box-shadow:0 10px 20px rgba(0,0,0,.15)}
+    .card .label{font-weight:800;font-size:14px}
+    .score{font-weight:900;font-size:24px;text-shadow:0 2px 0 rgba(0,0,0,.2)}
+    .highscores{position:absolute;top:55%;left:50%;transform:translate(-50%,-50%);background:rgba(255,255,255,.95);border-radius:12px;padding:16px 20px;box-shadow:0 6px 20px rgba(0,0,0,.25);display:none;text-align:center;pointer-events:auto;z-index:20;width:300px}
+    .highscores h2{margin:0 0 6px;font-size:20px;text-align:center}
+    .highscores ol{margin:0;padding:0 0 0 20px;font-weight:700;font-size:16px;text-align:left}
+    .highscores input{margin-top:10px;width:100%;padding:6px;border-radius:6px;border:1px solid #ccc;font-size:14px}
+    .highscores button{margin-top:8px;padding:6px 12px;border:0;border-radius:8px;background:#222;color:#fff;font-weight:700;cursor:pointer}
+    #saveStatus{margin-top:8px;font-size:13px;color:#555;display:none}
+    .bonk{position:absolute;width:160px;display:none;pointer-events:none;z-index:25}
+    .titleTop{position:absolute;top:20px;left:50%;transform:translateX(-50%);font-size:48px;font-weight:900;color:#fff;text-shadow:0 4px 8px rgba(0,0,0,.5);display:none;pointer-events:none;z-index:5}
+    .tapToStart{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:28px;font-weight:800;color:#fff;text-shadow:0 2px 4px rgba(0,0,0,.6);pointer-events:none;z-index:30}
+    @media (max-width: 768px) {
+      .titleTop { font-size: 32px; }
+      .tapToStart { font-size: 20px; }
+    }
+  </style>
+  <script src="https://download.playfab.com/PlayFabClientApi.js"></script>
+</head>
+<body>
+  <div class="wrap"><canvas id="game"></canvas></div>
+  <div class="hud">
+    <div class="topbar"><button class="btn" id="btnMute">🔊</button></div>
+    <div class="card" id="info"><div class="label">Score:</div><div class="score" id="score">0</div></div>
+    <div class="highscores" id="highscores">
+      <h2>🏆 Global High Scores</h2>
+      <ol id="hslist"></ol>
+      <input id="playerName" type="text" placeholder="Enter your name" maxlength="12">
+      <div id="saveStatus">Saving…</div>
+      <button id="btnSubmit">Submit Score</button>
+      <button id="btnRestart">Restart</button>
+    </div>
+    <img id="bonkImg" src="../media/games/bonk.png" class="bonk" alt="Bonk/Ouch">
+    <div id="titleTop" class="titleTop">CHILLED FLAPPY CAT</div>
+    <div id="tapToStart" class="tapToStart">👉 Click or Tap to Start</div>
+  </div>
+
+<script>
+(()=>{
+const isMobile=/Mobi|Android/i.test(navigator.userAgent);
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+const DPR=Math.max(1,Math.floor(window.devicePixelRatio||1));
+let VW=480,VH=720;
+
+function fit(){
+  const vw=window.innerWidth,vh=window.innerHeight;
+  const aspect=3/2;
+  let tw=vw, th=tw*aspect;
+  if(th>vh){ th=vh; tw=th/aspect; }
+  VW=tw; VH=th;
+  canvas.style.width=VW+'px';
+  canvas.style.height=VH+'px';
+  canvas.width=Math.floor(VW*DPR);
+  canvas.height=Math.floor(VH*DPR);
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+fit();
+addEventListener('resize',()=>{fit();repositionBonk();});
+addEventListener('orientationchange',()=>setTimeout(()=>{fit();repositionBonk();},300));
+
+let muted=false,audioCtx;
+function initAudio(){ if(!audioCtx) audioCtx=new(AudioContext||webkitAudioContext)(); }
+function beep(f=880,d=0.05,t='sine',v=0.1){ if(muted||!audioCtx)return; try{const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=t;o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+d);}catch{} }
+
+const playFabTitleId="1771C8"; PlayFab.settings.titleId=playFabTitleId;
+function loginPlayFab(){const id=localStorage.getItem("cc_flappy_playfab_id")||crypto.randomUUID();localStorage.setItem("cc_flappy_playfab_id",id);PlayFabClientSDK.LoginWithCustomID({TitleId:playFabTitleId,CustomId:id,CreateAccount:true},()=>{},()=>{});} loginPlayFab();
+
+const bonkImg=document.getElementById('bonkImg');
+const titleTop=document.getElementById('titleTop');
+const tapToStart=document.getElementById('tapToStart');
+const inputName=document.getElementById('playerName');
+const btnSubmit=document.getElementById('btnSubmit');
+const btnRestart=document.getElementById('btnRestart');
+const saveStatus=document.getElementById('saveStatus');
+
+function repositionBonk(){const hs=document.getElementById('highscores');if(!hs||hs.style.display==='none')return;const rect=hs.getBoundingClientRect();const scrollY=window.scrollY||document.documentElement.scrollTop;const bonkH=bonkImg.getBoundingClientRect().height||160;bonkImg.style.left=(rect.left+rect.width/2)+'px';bonkImg.style.top=(scrollY+rect.top-bonkH-20)+'px';bonkImg.style.transform='translateX(-50%)';}
+
+const G=1200,FLAP=420,PIPE_GAP_MIN=150,PIPE_GAP_MAX=210,PIPE_W=70,PIPE_SPACING=220,PIPE_SPEED=160,GROUND_H=60;
+let state='start',tPrev=0,acc=0,dtFixed=1/120,score=0;
+const catImg=new Image();catImg.src='../media/games/chilled_cat_fappy.png';let catImgReady=false;catImg.onload=()=>{catImgReady=true};
+const bonkVariants=['../media/games/bonk.png','../media/games/ouch.png','../media/games/meow.png'];bonkVariants.forEach(src=>{const i=new Image();i.src=src});
+const cat={x:120,y:200,vy:0,r:28,rot:0,flapTick:0};
+const pipes=[];
+
+function updateScore(){document.getElementById('score').textContent=score;}
+function reset(){score=0;updateScore();state='playing';tapToStart.style.display='none';titleTop.style.display='none';cat.x=120;cat.y=VH/2-60;cat.vy=0;cat.rot=0;cat.flapTick=0;pipes.length=0;spawnPipes(true);bonkImg.style.display='none';document.getElementById('highscores').style.display='none';}
+function spawnPipes(initial=false){const bx=initial?VW+100:Math.max(VW+10,(pipes.at(-1)?.x||0)+PIPE_SPACING);const gap=PIPE_GAP_MIN+Math.random()*(PIPE_GAP_MAX-PIPE_GAP_MIN);const m=80;const th=m+Math.random()*(VH-GROUND_H-m*2-gap);pipes.push({x:bx,w:PIPE_W,top:th,gap,passed:false});}
+function flap(){if(state!=='playing')return;cat.vy=-FLAP;cat.flapTick=0.12;beep(520,0.05,'square',0.06);}
+
+if(isMobile){canvas.addEventListener('touchstart',e=>{initAudio();e.preventDefault();if(state==='dead'||state==='start'){reset();return;}flap();},{passive:false});}
+else{addEventListener('keydown',e=>{if(e.code==='Space'){const hs=document.getElementById('highscores').style.display!=='none';const focused=document.activeElement===inputName;if(hs||focused)return;e.preventDefault();if(state==='playing'){flap();}}});canvas.addEventListener('click',e=>{initAudio();e.preventDefault();if(state==='dead'||state==='start'){reset();return;}flap();});}
+
+document.getElementById('btnMute').addEventListener('click',()=>{muted=!muted;document.getElementById('btnMute').textContent=muted?'🔈':'🔊'}); btnRestart.addEventListener('click',()=>{reset();});
+
+function step(dt){if(state!=='playing')return;cat.vy+=G*dt;cat.y+=cat.vy*dt;cat.rot=Math.atan2(cat.vy,PIPE_SPEED)*0.8;if(cat.flapTick>0)cat.flapTick-=dt;for(const p of pipes)p.x-=PIPE_SPEED*dt;if(!pipes.length||(VW-(pipes.at(-1)?.x||0))>PIPE_SPACING)spawnPipes();while(pipes.length&&pipes[0].x+pipes[0].w<-50)pipes.shift();for(const p of pipes){if(!p.passed&&cat.x>p.x+p.w){p.passed=true;score++;updateScore();beep(800,0.04,'triangle',0.06);}if(circleRect(cat.x,cat.y,cat.r,p.x,0,p.w,p.top)||circleRect(cat.x,cat.y,cat.r,p.x,p.top+p.gap,p.w,VH-GROUND_H-(p.top+p.gap))){die();}}if(cat.y+cat.r>VH-GROUND_H||cat.y-cat.r<0)die();}
+function die(){if(state==='dead')return;state='dead';beep(220,0.2,'sawtooth',0.08);const src=bonkVariants[Math.floor(Math.random()*bonkVariants.length)];bonkImg.src=src;bonkImg.style.display='block';document.getElementById('highscores').style.display='block';renderHighscores();titleTop.style.display='block';requestAnimationFrame(repositionBonk);}
+
+btnSubmit.addEventListener('click',()=>{const name=inputName.value.trim()||"Cat";inputName.value="";btnSubmit.disabled=true;btnSubmit.style.opacity="0.6";saveStatus.style.display="block";saveStatus.textContent="Saving…";PlayFabClientSDK.UpdateUserTitleDisplayName({DisplayName:name},()=>{},()=>{});PlayFabClientSDK.GetPlayerStatistics({},(res)=>{if(res&&res.data){let currentBest=0;res.data.Statistics.forEach(s=>{if(s.StatisticName==="HighScore")currentBest=s.Value;});if(score>currentBest){PlayFabClientSDK.UpdatePlayerStatistics({Statistics:[{StatisticName:"HighScore",Value:score}]},()=>{saveStatus.textContent="✅ Score saved!";setTimeout(()=>{saveStatus.style.display="none";btnSubmit.disabled=false;btnSubmit.style.opacity="1";renderHighscores();},1000);},()=>{saveStatus.textContent="❌ Error saving score";btnSubmit.disabled=false;btnSubmit.style.opacity="1";});}else{saveStatus.textContent="No new high score";setTimeout(()=>{saveStatus.style.display="none";btnSubmit.disabled=false;btnSubmit.style.opacity="1";renderHighscores();},1000);}}else{saveStatus.textContent="❌ Error fetching stats";btnSubmit.disabled=false;btnSubmit.style.opacity="1";}});});
+function renderHighscores(){const list=document.getElementById('hslist');list.innerHTML='';const req={StatisticName:"HighScore",StartPosition:0,MaxResultsCount:5};PlayFabClientSDK.GetLeaderboard(req,(res)=>{if(res&&res.data){if(res.data.Leaderboard.length===0){const li=document.createElement('li');li.textContent="No scores yet";list.appendChild(li);}else{res.data.Leaderboard.forEach(e=>{const li=document.createElement('li');li.textContent=`${e.DisplayName||e.PlayFabId}: ${e.StatValue}`;list.appendChild(li);});}}else{const li=document.createElement('li');li.textContent="Error loading leaderboard";list.appendChild(li);}repositionBonk();});}
+
+function circleRect(cx,cy,cr,rx,ry,rw,rh){const tx=Math.max(rx,Math.min(cx,rx+rw)),ty=Math.max(ry,Math.min(cy,ry+rh));const dx=cx-tx,dy=cy-ty;return dx*dx+dy*dy<=cr*cr;}
+function draw(){ctx.clearRect(0,0,VW,VH);for(const p of pipes)drawPipe(p);ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--grass');ctx.fillRect(0,VH-GROUND_H,VW,20);ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--ground');ctx.fillRect(0,VH-GROUND_H+20,VW,GROUND_H-20);ctx.save();ctx.translate(cat.x,cat.y);ctx.rotate(cat.rot);if(catImgReady){const s=72;ctx.drawImage(catImg,-s/2,-s/2,s,s);}else{ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(0,0,28,0,Math.PI*2);ctx.fill();}ctx.restore();if(state==='playing'){ctx.fillStyle='rgba(255,255,255,.85)';ctx.strokeStyle='rgba(0,0,0,.25)';ctx.lineWidth=6;ctx.font='900 56px system-ui';ctx.textAlign='center';ctx.strokeText(String(score),VW/2,90);ctx.fillText(String(score),VW/2,90);}}
+function drawPipe(p){ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--pipe');ctx.fillRect(p.x,0,p.w,p.top);ctx.fillRect(p.x-4,p.top-16,p.w+8,16);const by=p.top+p.gap;ctx.fillRect(p.x,by,p.w,VH-GROUND_H-by);ctx.fillRect(p.x-4,by,p.w+8,16);}
+function loop(t){const now=t/1000,dt=tPrev?Math.min(0.05,now-tPrev):0;tPrev=now;if(state==='playing'){acc+=dt;while(acc>=dtFixed){step(dtFixed);acc-=dtFixed;}}draw();requestAnimationFrame(loop);}requestAnimationFrame(loop);
+
+state='start';tapToStart.style.display='block';titleTop.style.display='block';
+})();
+</script>
+</body>
+</html>
