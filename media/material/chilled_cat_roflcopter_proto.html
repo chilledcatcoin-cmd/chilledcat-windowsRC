@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chilled Cat ROFLCopter</title>
+  <style>
+    html, body { height: 100%; margin: 0; background: #0a1a2f; color:#fff; font-family: monospace; }
+    body { display: grid; place-items: center; }
+    pre { font-size: 16px; line-height: 18px; }
+    .blue { color:#1b63c7; font-weight:bold; }
+  </style>
+</head>
+<body>
+  <pre id="copter"></pre>
+<script>
+(() => {
+  // Two frames for animation
+  const copterFrames = [
+    [
+      "         CHILL:CHILL:LOL:           ",
+      "                ______|_____",
+      "  L          /               \\\\",
+      "  O    ======        [=^.^=]  []",
+      "  L          |_______________/",
+      "                   |   |",
+      "                ---------/"
+    ],
+    [
+      "                    :LOL:CHILL:CHILL",
+      "                ______|_____",
+      "             /               \\\\",
+      " L O L ======        [=^.^=]  []",
+      "             |_______________/",
+      "                   |   |",
+      "                ---------/"
+    ],
+  ];
+
+  let frame = 0;
+  const copterEl = document.getElementById('copter');
+
+  function draw() {
+    // replace ASCII cat with blue styled span
+    const frameLines = copterFrames[frame].map(line =>
+      line.replace("[=^.^=]", "[<span class='blue'>=^.^=</span>]")
+    );
+    copterEl.innerHTML = frameLines.join("<br>");
+    frame = (frame+1) % copterFrames.length;
+  }
+
+  setInterval(draw, 400); // switch every 400ms
+  draw();
+})();
+</script>
+</body>
+</html>

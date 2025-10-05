@@ -4,36 +4,43 @@
 <meta charset="UTF-8">
 <title>Run</title>
 <style>
-  body {
+  html, body {
     margin: 0;
+    padding: 0;
+    background: transparent;
     font-family: "MS Sans Serif", sans-serif;
-    background: #c0c0c0;
-    padding: 10px;
     font-size: 13px;
   }
 
-  .window {
-    width: 340px;
-    border: 2px solid #808080;
-    box-shadow: inset -1px -1px 0 #fff, inset 1px 1px 0 #000;
-    background: #c0c0c0;
-    padding: 8px;
+  .dialog {
+    background: #bfbfbf;
+    width: 300px;
+    padding: 10px 12px;
+    box-sizing: border-box;
   }
 
-  .title { font-weight: bold; margin-bottom: 8px; }
-
-  .content {
-    border: 2px inset #fff;
-    background: white;
-    padding: 8px;
-    min-height: 80px;
+  p {
+    margin: 0 0 8px;
   }
 
-  label { display: block; margin-bottom: 4px; }
+  label {
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  .input-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .input-row img {
+    width: 24px;
+    height: 24px;
+  }
 
   input[type="text"] {
-    width: 100%;
-    box-sizing: border-box;
+    flex: 1;
     border: 2px inset #fff;
     background: #fff;
     padding: 4px;
@@ -42,48 +49,40 @@
   }
 
   .buttons {
-    margin-top: 12px;
     display: flex;
     justify-content: flex-end;
     gap: 6px;
+    margin-top: 16px;
   }
 
   button {
     font-family: inherit;
     font-size: 13px;
-    padding: 2px 10px;
-    background: #c0c0c0;
+    padding: 2px 14px;
+    background: #bfbfbf;
     border: 2px outset #fff;
     cursor: pointer;
+    min-width: 70px;
   }
 
-  button:active { border: 2px inset #fff; }
-
-  footer {
-    margin-top: 10px;
-    font-size: 11px;
-    color: #333;
-    text-align: center;
+  button:active {
+    border: 2px inset #fff;
   }
 </style>
 </head>
 <body>
-  <div class="window">
-    <div class="title">Run</div>
-    <div class="content">
-      <p>Type the name of a program, folder, document, or internet resource, and Chilled Cat will open it for you.</p>
-      <label for="run">Open:</label>
-      <input type="text" id="run" placeholder="">
-      <div class="buttons">
-        <button id="ok-btn">OK</button>
-        <button id="cancel-btn">Cancel</button>
-        <button>Browse...</button>
-      </div>
+  <div class="dialog">
+    <p>Type the name of a program, folder, document, or internet resource, and Chilled Cat will open it for you.</p>
+    <label for="run">Open:</label>
+    <div class="input-row">
+      <img src="../media/icons/run.png" alt="">
+      <input type="text" id="run">
     </div>
-    <footer>
-      Chilled Cat Support © 1997–2025<br>
-      “It’s not a bug — it’s just napping.”
-    </footer>
+
+    <div class="buttons">
+      <button id="ok-btn">OK</button>
+      <button id="cancel-btn">Cancel</button>
+    </div>
   </div>
 
 <script>
@@ -105,7 +104,6 @@ const easterEggs = {
   "format c:": "😼 Nice try. Chilled Cat doesn’t self-destruct.",
   "moto": "🏍️ MOTO detected... revving up engines!",
   "grease bag dan": "🛠️ Dan’s desk still isn’t ordered.",
-  "glasderg": "😏 Access granted to Coolest Cat Admin.",
   "chilledcat": "😺 Welcome back to the Chilled Dimension.",
   "42": "🤖 The answer to life, the universe, and everything.",
   "sudo": "🐧 Sorry, you’re not root. (You’re just chill.)",
@@ -116,17 +114,14 @@ function executeRun() {
   const cmd = runInput.value.trim().toLowerCase();
   if (!cmd) return;
 
-  console.log("[RUN] Command:", cmd); // ✅ debug confirmation
-
   if (easterEggs[cmd]) {
-    console.log("[RUN] Sending message:", easterEggs[cmd]);
     window.parent.postMessage({ type: "showMessage", text: easterEggs[cmd] }, "*");
     return;
   }
 
   if (map[cmd]) {
-    console.log("[RUN] Opening app:", map[cmd]);
     window.parent.postMessage({ type: "openApp", app: map[cmd] }, "*");
+    window.parent.postMessage({ type: "closeRun" }, "*");
     return;
   }
 
@@ -134,17 +129,14 @@ function executeRun() {
     type: "showMessage",
     text: "❓ Unknown command: " + cmd
   }, "*");
-  console.log("[RUN] Unknown command:", cmd);
 }
 
 document.getElementById("ok-btn").addEventListener("click", executeRun);
 document.getElementById("cancel-btn").addEventListener("click", () => {
   window.parent.postMessage({ type: "closeRun" }, "*");
 });
-runInput.addEventListener("keydown", e => {
-  if (e.key === "Enter") executeRun();
-});
+runInput.addEventListener("keydown", e => { if (e.key === "Enter") executeRun(); });
+window.onload = () => runInput.focus();
 </script>
-
 </body>
 </html>
