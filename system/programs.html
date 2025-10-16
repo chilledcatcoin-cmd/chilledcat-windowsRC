@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Programs</title>
+<style>
+  body {
+    margin: 0;
+    background: #c0c0c0;
+    font-family: "MS Sans Serif", sans-serif;
+    font-size: 13px;
+    color: black;
+    padding: 12px;
+  }
+
+  h1 {
+    margin: 0 0 10px 4px;
+    font-size: 14px;
+    color: #000080;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, 110px);
+    gap: 18px 20px;
+    justify-content: flex-start;
+  }
+
+  .item {
+    text-align: center;
+    cursor: default;
+  }
+
+  .item:hover {
+    background: #000080;
+    color: white;
+  }
+
+  .item img {
+    width: 32px;
+    height: 32px;
+    image-rendering: pixelated;
+    display: block;
+    margin: 0 auto 4px;
+  }
+
+  .folder {
+    font-weight: bold;
+    margin: 12px 4px 6px;
+    color: #000;
+  }
+
+  hr {
+    border: none;
+    border-top: 1px solid #808080;
+    margin: 12px 0;
+  }
+</style>
+</head>
+<body>
+
+  <h1>Programs</h1>
+
+  <!-- Games Section -->
+  <div class="folder">Games</div>
+  <div class="grid">
+    <div class="item" ondblclick="openApp('./apps/flappycat.html')">
+      <img src="../media/icons/app_flappycat.png" alt="">
+      Flappy Cat
+    </div>
+    <div class="item" ondblclick="openApp('./apps/minesweeper.html')">
+      <img src="../media/icons/app_mines.png" alt="">
+      CatSweeper
+    </div>
+    <div class="item" ondblclick="openApp('./apps/catclicker.html')">
+      <img src="../media/icons/app_catclicker.png" alt="">
+      Cat Clicker ’97+
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- Applications Section -->
+  <div class="folder">Applications</div>
+  <div class="grid">
+    <div class="item" ondblclick="openApp('./apps/paint.html')">
+      <img src="../media/icons/app_paint.png" alt="">
+      Chilled Paint
+    </div>
+    <div class="item" ondblclick="openApp('./apps/chillpad.html')">
+      <img src="../media/icons/app_chillpad.png" alt="">
+      Chillpad
+    </div>
+    <div class="item" ondblclick="openApp('./apps/catculator.html')">
+      <img src="../media/icons/app_catculator.png" alt="">
+      Catculator
+    </div>
+    <div class="item" ondblclick="openApp('./apps/chillscape.html')">
+      <img src="../media/icons/chillscape.png" alt="">
+      ChillScape
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- Accessories Section -->
+  <div class="folder">Accessories</div>
+  <div class="grid">
+    <div class="item" ondblclick="openApp('./apps/clock.html')">
+      <img src="../media/icons/clock.png" alt="">
+      Chilled Clock
+    </div>
+    <div class="item" ondblclick="openApp('./apps/network.html')">
+      <img src="../media/icons/network.png" alt="">
+      Network
+    </div>
+    <div class="item" ondblclick="openApp('./apps/volume.html')">
+      <img src="../media/icons/volume.png" alt="">
+      Volume Control
+    </div>
+    <div class="item" ondblclick="openApp('./apps/settings.html')">
+      <img src="../media/icons/settings.png" alt="">
+      Settings
+    </div>
+    <div class="item" ondblclick="openApp('./apps/help.html')">
+      <img src="../media/icons/help.png" alt="">
+      Help
+    </div>
+    <div class="item" ondblclick="openApp('./apps/run.html')">
+      <img src="../media/icons/run.png" alt="">
+      Run
+    </div>
+<div class="item" ondblclick="openApp('./system/personalize.html')">
+  <img src="../media/icons/settings.png" alt="">
+  Personalize
+</div>
+  </div>
+
+<script>
+function openApp(path) {
+  window.top.postMessage({ type: "openApp", app: path }, "*");
+}
+</script>
+</body>
+</html>

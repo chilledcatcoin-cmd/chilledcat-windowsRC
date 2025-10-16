@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Chilled Character Map</title>
+<style>
+  body {
+    margin: 0;
+    background: #c0c0c0;
+    font-family: "MS Sans Serif", sans-serif;
+    font-size: 13px;
+    color: black;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  .title { background:#000080; color:white; padding:3px 6px; font-weight:bold; }
+
+  .grid {
+    flex:1;
+    display:grid;
+    grid-template-columns: repeat(auto-fill, 40px);
+    gap:4px;
+    padding:8px;
+    justify-content:flex-start;
+    overflow-y:auto;
+    background:#d4d0c8;
+    border-bottom:2px inset #808080;
+  }
+
+  .char {
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    height:40px;
+    font-size:20px;
+    background:#fff;
+    border:1px solid #808080;
+    cursor:default;
+  }
+  .char:hover { background:#000080; color:white; }
+  .char.selected { border:2px solid #000080; }
+
+  .details {
+    background:#d4d0c8;
+    padding:8px;
+    border-top:2px solid #fff;
+  }
+
+  .preview {
+    font-size:48px;
+    text-align:center;
+    margin-bottom:4px;
+  }
+
+  .info { text-align:center; margin-bottom:6px; }
+  button {
+    font-family:"MS Sans Serif";
+    font-size:12px;
+    padding:2px 10px;
+    border:2px outset #fff;
+    background:#c0c0c0;
+    cursor:pointer;
+  }
+  button:active { border:2px inset #808080; }
+</style>
+</head>
+<body>
+
+  <div class="title">Character Map – Chilled Edition</div>
+
+  <div id="charGrid" class="grid"></div>
+
+  <div class="details">
+    <div id="preview" class="preview">?</div>
+    <div id="info" class="info">Select a character</div>
+    <div style="text-align:center;">
+      <button id="copyBtn" disabled>Copy</button>
+    </div>
+  </div>
+
+<script>
+const chars = [
+  // 😼 Cat & paw zone
+  "😼","😹","😻","😺","😸","😾","🐱","🐈","🐈‍⬛","🐾",
+  // ✨ Cool / aesthetic
+  "★","☆","✦","✧","✩","✨","💫","❄","☀","☁",
+  // 😎 Chill / faces
+  "😎","🆒","😏","🫶","❤️","💙","💜","🖤","🤍","🤎",
+  // ASCII / symbols that look cool
+  "♠","♣","♥","♦","♪","♫","☯","☮","☕","⚡"
+];
+
+const grid = document.getElementById("charGrid");
+const preview = document.getElementById("preview");
+const info = document.getElementById("info");
+const copyBtn = document.getElementById("copyBtn");
+
+let selectedChar = null;
+
+chars.forEach(ch => {
+  const div = document.createElement("div");
+  div.className = "char";
+  div.textContent = ch;
+  div.addEventListener("click", () => selectChar(div, ch));
+  grid.appendChild(div);
+});
+
+function selectChar(el, ch) {
+  document.querySelectorAll(".char").forEach(c => c.classList.remove("selected"));
+  el.classList.add("selected");
+  selectedChar = ch;
+  preview.textContent = ch;
+  const codePoint = ch.codePointAt(0);
+  const altCode = codePoint ? `Alt+${codePoint}` : "";
+  info.textContent = `${ch}   —   Unicode U+${codePoint.toString(16).toUpperCase()}   (${altCode})`;
+  copyBtn.disabled = false;
+}
+
+copyBtn.addEventListener("click", () => {
+  if (!selectedChar) return;
+  navigator.clipboard.writeText(selectedChar).then(() => {
+    info.textContent = `Copied ${selectedChar} to clipboard!`;
+  });
+});
+</script>
+</body>
+</html>

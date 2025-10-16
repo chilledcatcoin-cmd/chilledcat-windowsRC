@@ -51,9 +51,48 @@
     background: #fff;
     width: 100%;
   }
+
+  /* Modal overlay for offline prompt */
+  .offline-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+  }
+  .offline-dialog {
+    background: #c0c0c0;
+    border: 2px solid #000;
+    box-shadow: 3px 3px #808080;
+    width: 360px;
+    padding: 10px;
+    text-align: center;
+  }
+  .offline-dialog img {
+    width: 48px;
+    height: 48px;
+    image-rendering: pixelated;
+    margin-bottom: 10px;
+  }
+  .offline-dialog p {
+    margin: 8px 0;
+    font-size: 13px;
+  }
+  .offline-buttons {
+    margin-top: 12px;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+  }
+  .offline-buttons button {
+    min-width: 90px;
+  }
 </style>
 </head>
 <body>
+
   <div class="toolbar">
     <span class="brand">ChillScape</span>
     <div class="throbber"><img id="throbber" src="../media/icons/chillscape_idle.png" alt="Loading"></div>
@@ -68,11 +107,8 @@
 
 <script>
 (() => {
-  // --- Config ---
   const HOMEPAGE = "../website/index.html";
   const ALLOW_PREFIXES = ["./apps/", "./system/", "../website/"];
-
-  // --- Elements ---
   const viewer = document.getElementById("viewer");
   const urlBar = document.getElementById("url");
   const backBtn = document.getElementById("backBtn");
@@ -81,34 +117,112 @@
   const goBtn = document.getElementById("goBtn");
   const throbber = document.getElementById("throbber");
 
-  // --- History state ---
   let historyStack = [HOMEPAGE];
   let historyIndex = 0;
 
-  // --- Helpers ---
+/* -------------------------------
+   Listen for global connection events
+--------------------------------*/
+window.addEventListener("message", (event) => {
+  const data = event.data || {};
+  if (data.type === "connectNetwork") {
+    // ✅ Modem finished connecting
+    localStorage.setItem("rc-online", "true");
+    const overlay = document.querySelector(".offline-overlay");
+    if (overlay) overlay.remove();
+    navigateTo("about:home");
+  }
+
+  if (data.type === "disconnectNetwork") {
+    // ❌ Lost connection
+    localStorage.setItem("rc-online", "false");
+    showOfflinePrompt();
+  }
+});
+
+  /* -------------------------------
+     Offline Check & Modal
+  --------------------------------*/
+  window.addEventListener("load", () => {
+    const online = localStorage.getItem("rc-online") === "true";
+    if (!online) showOfflinePrompt();
+    else navigateTo("about:home");
+  });
+
+  function showOfflinePrompt() {
+    const overlay = document.createElement("div");
+    overlay.className = "offline-overlay";
+    overlay.innerHTML = `
+      <div class="offline-dialog">
+        <img src="../media/icons/network_off.png" alt="Offline">
+        <p><b>You are not currently connected to the Internet.</b></p>
+        <p>Would you like to connect now?</p>
+        <div class="offline-buttons">
+          <button id="connectNow">Connect</button>
+          <button id="workOffline">Work Offline</button>
+          <button id="cancelBtn">Cancel</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+overlay.querySelector("#connectNow").addEventListener("click", () => {
+  // Launch the dial-up networking app
+  window.top.postMessage({ type: "openApp", app: "./apps/network.html" }, "*");
+
+  // Add a small “connecting…” status message
+  const status = document.createElement("p");
+  status.id = "connectingStatus";
+  status.textContent = "Connecting to ChillNet...";
+  status.style.color = "#000080";
+  status.style.marginTop = "6px";
+  overlay.querySelector(".offline-dialog").appendChild(status);
+
+  // Periodically check if the modem finished connecting
+  const checkInterval = setInterval(() => {
+    if (localStorage.getItem("rc-online") === "true") {
+      clearInterval(checkInterval);
+      const overlay = document.querySelector(".offline-overlay");
+      if (overlay) overlay.remove();
+      navigateTo("about:home");
+    }
+  }, 1000);
+
+  // Optional timeout after 30 s
+  setTimeout(() => {
+    if (localStorage.getItem("rc-online") !== "true") {
+      status.textContent = "Unable to establish connection. Please try again.";
+      status.style.color = "red";
+      clearInterval(checkInterval);
+    }
+  }, 30000);
+});
+
+
+overlay.querySelector("#workOffline").addEventListener("click", () => {
+  overlay.remove();
+  viewer.src = "./offline_game.html";
+});
+
+  }
+
+  /* -------------------------------
+     Browser Logic
+  --------------------------------*/
   function setThrobberLoading(on) {
     throbber.src = on ? "../media/icons/chillscape_anim.gif"
                       : "../media/icons/chillscape_idle.png";
   }
 
   function normalizeToProjectPath(href) {
-    // Turn absolute file/http URLs into our project-relative form
     try {
-      // If it's already relative and starts with our prefixes, keep it
       if (ALLOW_PREFIXES.some(p => href.startsWith(p))) return href;
-
-      // If it's about: page keep as-is
       if (href.startsWith("about:")) return href;
-
-      // For absolute URLs (http/file), reduce to relative project subpath
       const abs = new URL(href, window.location.href);
       const path = abs.pathname;
-
       if (path.includes("/website/")) return "../website/" + path.split("/website/")[1];
       if (path.includes("/apps/"))    return "./apps/"    + path.split("/apps/")[1];
       if (path.includes("/system/"))  return "./system/"  + path.split("/system/")[1];
-
-      // Fallback: return as-is (will likely be blocked by allowlist)
       return href;
     } catch {
       return href;
@@ -122,7 +236,6 @@
   function navigateTo(urlLike) {
     let url = urlLike.trim();
 
-    // about: pages
     if (url === "about:home") {
       setThrobberLoading(true);
       viewer.removeAttribute("srcdoc");
@@ -133,7 +246,6 @@
     }
     if (url === "about:blank") {
       viewer.src = "about:blank";
-      // Using srcdoc to ensure blank even on file: quirks
       viewer.srcdoc = "";
       urlBar.value = "about:blank";
       setThrobberLoading(false);
@@ -141,7 +253,6 @@
       return;
     }
 
-    // Only local allowed
     if (!allowed(url)) {
       alert("🚫 ChillScape Navigator only supports local Windows RC sites.");
       return;
@@ -154,7 +265,6 @@
   }
 
   function pushHistory(url) {
-    // Avoid duplicate consecutive entries
     const last = historyStack[historyIndex];
     if (last === url) return;
     historyStack = historyStack.slice(0, historyIndex + 1);
@@ -174,7 +284,7 @@
       const url = historyStack[historyIndex];
       setThrobberLoading(true);
       viewer.removeAttribute("srcdoc");
-      viewer.src = (url === "about:blank") ? "about:blank" : url;
+      viewer.src = url;
       urlBar.value = (url === HOMEPAGE) ? "about:home" : url;
       updateNavButtons();
     }
@@ -186,7 +296,7 @@
       const url = historyStack[historyIndex];
       setThrobberLoading(true);
       viewer.removeAttribute("srcdoc");
-      viewer.src = (url === "about:blank") ? "about:blank" : url;
+      viewer.src = url;
       urlBar.value = (url === HOMEPAGE) ? "about:home" : url;
       updateNavButtons();
     }
@@ -195,54 +305,25 @@
   function reload() {
     setThrobberLoading(true);
     const url = historyStack[historyIndex];
-    if (url === "about:blank") {
-      viewer.src = "about:blank";
-      viewer.srcdoc = "";
-      setThrobberLoading(false);
-    } else {
-      viewer.removeAttribute("srcdoc");
-      viewer.src = url === "about:home" ? HOMEPAGE : url;
-    }
+    viewer.removeAttribute("srcdoc");
+    viewer.src = url === "about:home" ? HOMEPAGE : url;
   }
 
-  // --- Events ---
   goBtn.addEventListener("click", () => navigateTo(urlBar.value));
-  urlBar.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") navigateTo(urlBar.value);
-  });
+  urlBar.addEventListener("keydown", (e) => { if (e.key === "Enter") navigateTo(urlBar.value); });
   backBtn.addEventListener("click", goBack);
   fwdBtn.addEventListener("click", goForward);
   reloadBtn.addEventListener("click", reload);
 
-  // Sync URL bar & history when iframe finishes loading (including in-iframe link clicks)
   viewer.addEventListener("load", () => {
-    // Determine the current location of the iframe and normalize
     let current = "about:blank";
     try {
-      // Prefer contentWindow.location when same-origin
-      const href = viewer.contentWindow.location.href;
-      current = normalizeToProjectPath(href);
-    } catch {
-      // Fallback to iframe.src if cross-origin (shouldn't happen in local)
-      current = normalizeToProjectPath(viewer.src || "about:blank");
-    }
-
-    // Map homepage to about:home in the bar
+      current = normalizeToProjectPath(viewer.contentWindow.location.href);
+    } catch { current = normalizeToProjectPath(viewer.src || "about:blank"); }
     urlBar.value = (current === HOMEPAGE) ? "about:home" : current;
-
-    // If user clicked inside iframe, ensure history captures it
-    if (historyStack[historyIndex] !== current && current !== "about:blank") {
-      pushHistory(current);
-    }
-
+    if (historyStack[historyIndex] !== current && current !== "about:blank") pushHistory(current);
     setThrobberLoading(false);
   });
-
-  // --- Init ---
-  // Start at about:home
-  urlBar.value = "about:home";
-  updateNavButtons();
-  navigateTo("about:home");
 })();
 </script>
 </body>

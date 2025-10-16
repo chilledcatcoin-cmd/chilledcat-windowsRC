@@ -1,135 +1,242 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Dial-Up Networking</title>
-  <style>
-    body {
-      margin: 0;
-      background: #c0c0c0;
-      font-family: "MS Sans Serif", sans-serif;
-      font-size: 13px;
-      color: #000;
-    }
+<meta charset="UTF-8">
+<title>Dial-Up Networking – ChillNet</title>
+<style>
+  body {
+    margin: 0;
+    font-family: "MS Sans Serif", sans-serif;
+    background: #c0c0c0;
+    color: #000;
+    font-size: 13px;
+    padding: 10px;
+  }
 
-    .content {
-      display: flex;
-      padding: 12px;
-      gap: 12px;
-    }
+  .cat-art {
+    display: block;
+    margin: 4px auto 10px auto;
+    width: 72px;
+    height: auto;
+    image-rendering: pixelated;
+  }
 
-    .left-col { 
-      width: 120px; 
-      display: flex; 
-      justify-content: center; 
-      align-items: center; 
-    }
+  .field { margin-bottom: 8px; }
+  .field label { display: block; margin-bottom: 2px; font-size: 12px; color: #000080; }
+  .field input, .field select {
+    width: 100%;
+    border: 1px solid #000;
+    padding: 3px;
+    font-family: "MS Sans Serif";
+    font-size: 12px;
+    background: #fff;
+  }
 
-    /* Use the new chilled cat phone art */
-    .net-art { 
-      width: 96px; 
-      height: auto; 
-      image-rendering: pixelated; 
-    }
+  .checkbox {
+    font-size: 12px;
+    margin: 4px 0;
+  }
 
-    .field { margin-bottom: 10px; display: flex; gap: 8px; align-items: center; }
-    .field label { width: 100px; font-size: 12px; color: #000080; }
-    .value { background: #fff; border: 1px solid #000; padding: 4px 6px; min-height: 20px; }
+  .buttons {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+  }
 
-    .field.small .value { font-family: monospace; }
+  button {
+    font-family: "MS Sans Serif";
+    font-size: 12px;
+    padding: 2px 12px;
+    border: 2px outset #c0c0c0;
+    background: #c0c0c0;
+    cursor: pointer;
+    min-width: 80px;
+  }
 
-    .buttons { margin-top: 6px; display: flex; gap: 8px; }
-    .buttons button { padding: 4px 10px; border: 2px outset #c0c0c0; cursor: pointer; font-size: 13px; }
-    .buttons button:active { border: 2px inset #808080; }
+  button:active { border: 2px inset #808080; }
 
-    .statusbar {
-      background: #c0c0c0;
-      border-top: 2px solid #fff;
-      border-left: 2px solid #fff;
-      border-right: 2px solid #808080;
-      border-bottom: 2px solid #808080;
-      padding: 6px 8px;
-      font-size: 12px;
-    }
-  </style>
+  .status {
+    background: #e0e0e0;
+    border-top: 2px solid #fff;
+    border-left: 2px solid #fff;
+    border-right: 2px solid #808080;
+    border-bottom: 2px solid #808080;
+    padding: 6px;
+    margin-top: 12px;
+    height: 50px;
+    font-size: 12px;
+    overflow: hidden;
+  }
+
+  .error {
+    color: red;
+    font-weight: bold;
+  }
+</style>
 </head>
 <body>
+  <img src="../media/icons/chilledcat_phone.png" alt="Chilled Cat Phone" class="cat-art">
 
-  <div class="content">
-    <div class="left-col">
-      <!-- Replace old modem icon with new cat phone art -->
-      <img src="../media/icons/chilledcat_phone.png" alt="Chilled Cat on Phone" class="net-art">
-    </div>
-
-    <div class="right-col">
-      <div class="field">
-        <label>Connection:</label>
-        <div class="value">Chilled ISP (Dial-up)</div>
-      </div>
-
-      <div class="field">
-        <label>Status:</label>
-        <div id="net-status" class="value">Not connected</div>
-      </div>
-
-      <div class="field small">
-        <label>IP Address:</label>
-        <div id="net-ip" class="value">—</div>
-      </div>
-
-      <div class="buttons">
-        <button id="connect-btn" onclick="startDialup()">Connect</button>
-        <button onclick="stopDialup()">Cancel</button>
-      </div>
-    </div>
+  <div class="field">
+    <label>Username:</label>
+    <input type="text" id="username" value="ChilledCat">
   </div>
 
-  <div class="statusbar">
-    <span id="net-notes">Click Connect to dial your ISP.</span>
+  <div class="field">
+    <label>Password:</label>
+    <input type="password" id="password" value="meow123">
   </div>
+
+  <div class="checkbox">
+    <input type="checkbox" id="saveInfo" checked> Save username and password
+  </div>
+
+  <div class="field">
+    <label>Dial number:</label>
+    <select id="dialNumber">
+      <option>1-800-CHILLED</option>
+    </select>
+  </div>
+
+  <div class="buttons">
+    <button id="connectBtn">Dial</button>
+    <button id="cancelBtn">Cancel</button>
+  </div>
+
+  <div class="status" id="statusBox">Status: Not connected.</div>
 
   <audio id="dialup-audio" preload="auto">
     <source src="../media/dialup.mp3" type="audio/mpeg">
   </audio>
 
   <script>
-    const netStatus   = document.getElementById('net-status');
-    const netIP       = document.getElementById('net-ip');
-    const connectBtn  = document.getElementById('connect-btn');
-    const dialupAudio = document.getElementById('dialup-audio');
+    const connectBtn = document.getElementById("connectBtn");
+    const cancelBtn = document.getElementById("cancelBtn");
+    const statusBox = document.getElementById("statusBox");
+    const dialupAudio = document.getElementById("dialup-audio");
 
-    let dotsTimer = null;
+    let connecting = false;
+    let connected = localStorage.getItem("rc-online") === "true";
+    let dialTimer = null;
 
-    function startDialup() {
-      connectBtn.disabled = true;
-      netStatus.textContent = "Dialing";
-      let dots = 0;
+    // Restore saved credentials
+    document.getElementById("username").value = localStorage.getItem("rc-username") || "ChilledCat";
+    document.getElementById("password").value = localStorage.getItem("rc-password") || "meow123";
 
-      dotsTimer = setInterval(() => {
-        dots = (dots + 1) % 4;
-        netStatus.textContent = "Dialing" + ".".repeat(dots);
-      }, 500);
+    updateUI();
 
-      dialupAudio.load();
-      dialupAudio.currentTime = 0;
-      dialupAudio.play().catch(err => console.error("Playback error:", err));
-
-      dialupAudio.onended = () => {
-        clearInterval(dotsTimer);
-        netStatus.textContent = "Connected";
-        netIP.textContent = "192.168.0." + Math.floor(Math.random() * 200 + 2);
-      };
+    function updateUI() {
+      if (connected) {
+        connectBtn.textContent = "Disconnect";
+        statusBox.textContent = "Status: Connected to ChillNet.";
+        cancelBtn.style.display = "none";
+      } else {
+        connectBtn.textContent = "Dial";
+        statusBox.textContent = "Status: Not connected.";
+        cancelBtn.style.display = "inline-block";
+      }
     }
 
-    function stopDialup() {
-      clearInterval(dotsTimer);
+    connectBtn.addEventListener("click", () => {
+      if (connected) disconnect();
+      else startDial();
+    });
+
+    cancelBtn.addEventListener("click", () => {
+      if (connecting) {
+        stopDial("Connection canceled.");
+      } else {
+        window.top.postMessage({ type: "closeWin", id: "network" }, "*");
+      }
+    });
+
+    function startDial() {
+      connecting = true;
+      connectBtn.disabled = true;
+      cancelBtn.disabled = false;
+      statusBox.textContent = "Status: Dialing attempt 1 of 5...";
+      dialupAudio.currentTime = 0;
+      dialupAudio.play().catch(()=>{});
+
+      const steps = [
+        "Dialing attempt 1 of 5...",
+        "Dialing...",
+        "Negotiating connection...",
+        "Verifying username and password...",
+        "Establishing connection...",
+        "Connected!"
+      ];
+
+      let stepIndex = 0;
+      const stepInterval = 28000 / steps.length;
+
+      dialTimer = setInterval(() => {
+        if (!connecting) return;
+
+        statusBox.textContent = "Status: " + steps[stepIndex];
+
+        // 🧩 When verifying credentials
+        if (steps[stepIndex] === "Verifying username and password...") {
+          const user = document.getElementById("username").value.trim();
+          const pass = document.getElementById("password").value.trim();
+
+          // ❌ Wrong credentials
+          if (user !== "ChilledCat" || pass !== "meow123") {
+            clearInterval(dialTimer);
+            wrongCredentials();
+            return;
+          }
+        }
+
+        stepIndex++;
+        if (stepIndex >= steps.length) {
+          clearInterval(dialTimer);
+          finishConnect();
+        }
+      }, stepInterval);
+    }
+
+    function wrongCredentials() {
+      connecting = false;
       dialupAudio.pause();
       dialupAudio.currentTime = 0;
       connectBtn.disabled = false;
-      netStatus.textContent = "Not connected";
-      netIP.textContent = "—";
+      statusBox.innerHTML = '<span class="error">❌ Wrong username or password.</span>';
+    }
+
+    function stopDial(message) {
+      connecting = false;
+      clearInterval(dialTimer);
+      dialupAudio.pause();
+      dialupAudio.currentTime = 0;
+      connectBtn.disabled = false;
+      statusBox.textContent = "Status: " + message;
+      setTimeout(() => window.top.postMessage({ type: "closeWin", id: "network" }, "*"), 800);
+    }
+
+    function finishConnect() {
+      connecting = false;
+      connected = true;
+      connectBtn.disabled = false;
+      connectBtn.textContent = "Disconnect";
+      statusBox.textContent = "Status: Connected to ChillNet.";
+      cancelBtn.style.display = "none";
+      localStorage.setItem("rc-online", "true");
+      localStorage.setItem("rc-username", document.getElementById("username").value);
+      localStorage.setItem("rc-password", document.getElementById("password").value);
+      window.top.postMessage({ type: "connectNetwork" }, "*");
+    }
+
+    function disconnect() {
+      connected = false;
+      connecting = false;
+      clearInterval(dialTimer);
+      localStorage.setItem("rc-online", "false");
+      statusBox.textContent = "Status: Disconnected.";
+      connectBtn.textContent = "Dial";
+      cancelBtn.style.display = "inline-block";
+      window.top.postMessage({ type: "disconnectNetwork" }, "*");
     }
   </script>
-
 </body>
 </html>

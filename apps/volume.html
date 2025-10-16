@@ -6,10 +6,10 @@
 <style>
   body {
     margin: 0;
-    background: #1a2a4f; /* deep blue */
+    background: #1a2a4f;
     font-family: "MS Sans Serif", sans-serif;
     font-size: 12px;
-    color: #e0f0ff; /* soft blue-white */
+    color: #e0f0ff;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -30,7 +30,6 @@
     color: #9ecbff;
   }
 
-  /* Scrollbar track */
   .scrollbar {
     width: 24px;
     height: 150px;
@@ -40,7 +39,6 @@
     position: relative;
   }
 
-  /* Thumb (paw image) */
   .thumb {
     width: 24px;
     height: 24px;
@@ -51,10 +49,9 @@
   }
   .thumb:active {
     cursor: grabbing;
-    filter: brightness(0.8); /* darker pressed look */
+    filter: brightness(0.8);
   }
 
-  /* Mute checkbox */
   .mute {
     margin-top: 8px;
     display: flex;
@@ -64,7 +61,6 @@
     color: #c6dcff;
   }
 
-  /* Volume percentage */
   #volLabel {
     margin-top: 6px;
     font-weight: bold;
@@ -91,43 +87,74 @@
   const muteBox = document.getElementById("muteBox");
   const volLabel = document.getElementById("volLabel");
 
-  let maxTop;
+  let maxTop, dragging = false, startY, startTop;
 
   function init() {
     maxTop = scrollbar.offsetHeight - thumb.offsetHeight;
 
-    // restore saved volume/mute
-    const savedVol = localStorage.getItem("rc-volume");
-    const savedMute = localStorage.getItem("rc-mute");
-    if (savedMute === "true") muteBox.checked = true;
+    const savedVol = parseFloat(localStorage.getItem("rc-volume")) || 0.5;
+    const savedMute = localStorage.getItem("rc-mute") === "true";
+    const lastVol = parseFloat(localStorage.getItem("rc-lastVolume")) || 0.5;
 
-    if (savedVol !== null) {
-      setThumbPosition(maxTop - (savedVol/100 * maxTop));
+    muteBox.checked = savedMute;
+
+    const vol = Math.min(Math.max(savedVol, 0), 1); // clamp to 0–1
+
+    if (savedMute) {
+      setThumbPosition(maxTop); // bottom = muted
+      volLabel.textContent = "Muted";
+      applyVolume(0, true);
     } else {
-      setThumbPosition(maxTop/2); // middle default
+      setThumbPosition(maxTop - (vol * maxTop));
+      volLabel.textContent = Math.round(vol * 100) + "%";
+      applyVolume(vol, false);
     }
+
+    window.top.postMessage({ type: "updateMute", muted: savedMute }, "*");
   }
 
   function setThumbPosition(y) {
     y = Math.max(0, Math.min(maxTop, y));
     thumb.style.top = y + "px";
 
-    const vol = 1 - (y / maxTop); // invert
+    const vol = 1 - (y / maxTop);
     const percent = Math.round(vol * 100);
 
+    // Unmute if user drags slider
+    if (dragging && muteBox.checked) {
+      muteBox.checked = false;
+      localStorage.setItem("rc-mute", "false");
+      window.top.postMessage({ type: "updateMute", muted: false }, "*");
+    }
+
     volLabel.textContent = muteBox.checked ? "Muted" : percent + "%";
-    applyVolume(muteBox.checked ? 0 : vol);
-
-    localStorage.setItem("rc-volume", percent);
+    applyVolume(muteBox.checked ? 0 : vol, muteBox.checked);
   }
 
-  function applyVolume(level) {
+  // --- Apply + persist ---
+  function applyVolume(level, mutedOverride = false) {
+    const isMuted = muteBox.checked || mutedOverride;
+    const safeLevel = Math.min(Math.max(level, 0), 1);
+
+    // ✅ Keep normalized (0–1) stored values
+    localStorage.setItem("rc-volume", safeLevel.toFixed(2));
+    if (!isMuted && safeLevel > 0) {
+      localStorage.setItem("rc-lastVolume", safeLevel.toFixed(2));
+    }
+    localStorage.setItem("rc-mute", isMuted);
+
+    // Update media
     const mediaEls = window.top.document.querySelectorAll("audio, video");
-    mediaEls.forEach(el => { try { el.volume = level; } catch(e){} });
+    mediaEls.forEach(el => {
+      try { el.volume = isMuted ? 0 : safeLevel; } catch(e){}
+    });
+
+    // Notify desktop + tray
+    window.top.postMessage({ type: "setVolume", level: safeLevel }, "*");
+    window.top.postMessage({ type: "updateMute", muted: isMuted }, "*");
   }
 
-  // Dragging
-  let dragging = false, startY, startTop;
+  // --- Dragging ---
   thumb.addEventListener("mousedown", e => {
     dragging = true;
     startY = e.clientY;
@@ -143,21 +170,42 @@
   }
 
   function stopDrag() {
+    if (!dragging) return;
     dragging = false;
+
+    const ding = new Audio("../media/volume_ding.wav");
+    const savedVol = parseFloat(localStorage.getItem("rc-volume")) || 0.5;
+    ding.volume = muteBox.checked ? 0 : Math.min(Math.max(savedVol, 0), 1);
+    ding.play().catch(()=>{});
+
     document.removeEventListener("mousemove", onDrag);
     document.removeEventListener("mouseup", stopDrag);
   }
 
-  // Mute toggle
-  muteBox.addEventListener("change", () => {
-    const y = parseInt(thumb.style.top) || 0;
-    const vol = 1 - (y / maxTop);
-    volLabel.textContent = muteBox.checked ? "Muted" : Math.round(vol*100) + "%";
-    applyVolume(muteBox.checked ? 0 : vol);
-    localStorage.setItem("rc-mute", muteBox.checked);
+  // --- Click on track to jump volume ---
+  scrollbar.addEventListener("mousedown", e => {
+    if (e.target === thumb) return;
+    const rect = scrollbar.getBoundingClientRect();
+    const clickY = e.clientY - rect.top - thumb.offsetHeight / 2;
+    setThumbPosition(clickY);
   });
 
-  // Init after layout is ready
+  // --- Mute toggle ---
+  muteBox.addEventListener("change", () => {
+    const lastVol = parseFloat(localStorage.getItem("rc-lastVolume")) || 0.5;
+
+    if (muteBox.checked) {
+      setThumbPosition(maxTop);
+      volLabel.textContent = "Muted";
+      applyVolume(0, true);
+    } else {
+      const restoreY = maxTop - (lastVol * maxTop);
+      setThumbPosition(restoreY);
+      volLabel.textContent = Math.round(lastVol * 100) + "%";
+      applyVolume(lastVol, false);
+    }
+  });
+
   window.addEventListener("load", init);
 </script>
 </body>

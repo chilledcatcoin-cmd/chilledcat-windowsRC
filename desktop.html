@@ -198,10 +198,13 @@ iframe.fullscreen {
   <audio id="shutdown-audio" src="./media/shutdown.mp3"></audio>
 
   <!-- Desktop Context Menu -->
-  <div id="desktop-menu">
-    <div data-action="align">Align to Grid</div>
-    <div data-action="auto">Auto Arrange</div>
-  </div>
+<div id="desktop-menu">
+  <div data-action="align">Align to Grid</div>
+  <div data-action="auto">Auto Arrange</div>
+  <hr style="border:none;border-top:1px solid #808080;margin:4px 0;">
+  <div data-action="personalize">Personalize...</div>
+</div>
+
 
 <script>
   const desktop=document.getElementById('desktop-area');
@@ -230,8 +233,8 @@ iframe.fullscreen {
 
   const trayApps={
     volume:{id:'volume',title:'Volume Control',icon:'./media/icons/volume.png',app:'apps/volume.html',width:160,height:320},
-    network:{id:'network',title:'Network Connections',icon:'./media/icons/network.png',app:'apps/network.html',width:520,height:225},
-    clock:{id:'clock',title:'Chilled Cat Clock',icon:'./media/icons/clock.png',app:'apps/clock.html',width:300,height:450}
+    network:{id:'network',title:'Connect to ChillNet',icon:'./media/icons/network.png',app:'apps/network.html',width:400,height:400},
+    clock:{id:'clock',title:'Chilled Cat Clock',icon:'./media/icons/clock.png',app:'apps/clock.html',width:450,height:450}
   };
 
   function idToTitle(id){const ic=icons.find(i=>i.id===id)||trayApps[id];return ic?ic.title:id;}
@@ -277,10 +280,33 @@ iframe.fullscreen {
     ctxMenu.style.display='block';
   });
   document.addEventListener('click',()=>ctxMenu.style.display='none');
-  ctxMenu.addEventListener('click',e=>{
-    if(e.target.dataset.action==='align'){[...desktop.querySelectorAll('.icon')].forEach(el=>snapToGrid(el));}
-    if(e.target.dataset.action==='auto'){[...desktop.querySelectorAll('.icon')].forEach((el,idx)=>{const col=Math.floor(idx/7),row=idx%7;el.style.left=(gridOffsetX+col*gridSize)+'px';el.style.top=(gridOffsetY+row*iconSpacingY)+'px';});}
-  });
+ctxMenu.addEventListener('click',e=>{
+  const action = e.target.dataset.action;
+  if (!action) return;
+
+  if (action === 'align') {
+    [...desktop.querySelectorAll('.icon')].forEach(el => snapToGrid(el));
+  }
+  else if (action === 'auto') {
+    [...desktop.querySelectorAll('.icon')].forEach((el, idx) => {
+      const col = Math.floor(idx / 7), row = idx % 7;
+      el.style.left = (gridOffsetX + col * gridSize) + 'px';
+      el.style.top  = (gridOffsetY + row * iconSpacingY) + 'px';
+    });
+  }
+  else if (action === 'personalize') {
+    ctxMenu.style.display = 'none';
+    openApp({
+      id: 'personalize',
+      title: 'Personalize',
+      icon: './media/icons/settings.png',
+      app: './system/personalize.html',
+      width: 520,
+      height: 420
+    });
+  }
+});
+
 
   // Start menu toggle
   startBtn.addEventListener('click',()=>{menu.classList.toggle('show');startBtn.classList.toggle('pressed');});
@@ -482,6 +508,79 @@ function addResize(win) {
   corner.addEventListener('mousedown', e => startResize(e, 'corner'));
 }
 
+// === Volume & Mute Sync (Desktop ↔ Tray ↔ Volume) ===
+window.addEventListener("message", (e) => {
+  const data = e.data;
+  if (!data || !data.type) return;
+  const trayFrame = document.getElementById("tray");
+
+  // --- MUTE toggle ---
+  if (data.type === "updateMute") {
+    rcMute = !!data.muted;
+    localStorage.setItem("rc-mute", rcMute);
+    applyGlobalVolume();
+
+    // ✅ Immediately tell the tray to swap icons
+    if (trayFrame?.contentWindow) {
+      trayFrame.contentWindow.postMessage({ type: "updateMute", muted: rcMute }, "*");
+console.log("[DESKTOP] Sent mute update to tray:", rcMute);
+
+    }
+
+    // ✅ Also ping the Volume app (if open)
+    if (windows.has("volume")) {
+      const volFrame = windows.get("volume").querySelector("iframe");
+      if (volFrame?.contentWindow) {
+        volFrame.contentWindow.postMessage({ type: "updateMute", muted: rcMute }, "*");
+      }
+    }
+  }
+
+  // --- VOLUME slider change ---
+  if (data.type === "setVolume") {
+    rcVolume = parseFloat(data.level);
+    localStorage.setItem("rc-volume", rcVolume.toFixed(2));
+    applyGlobalVolume();
+
+    // ✅ Forward current volume to tray (tooltip support)
+    if (trayFrame?.contentWindow) {
+      trayFrame.contentWindow.postMessage({ type: "setVolume", level: rcVolume }, "*");
+    }
+  }
+});
+
+// --- Restore saved mute state on load ---
+window.addEventListener("load", () => {
+  const trayFrame = document.getElementById("tray");
+  const savedMute = localStorage.getItem("rc-mute") === "true";
+
+  const sendMuteState = () => {
+    if (trayFrame?.contentWindow) {
+      trayFrame.contentWindow.postMessage({ type: "updateMute", muted: savedMute }, "*");
+    }
+  };
+
+  if (trayFrame.contentWindow) sendMuteState();
+  else trayFrame.addEventListener("load", sendMuteState);
+});
+
+
+// --- Restore mute icon on desktop + tray load ---
+window.addEventListener("load", () => {
+  const trayFrame = document.getElementById("tray");
+  const savedMute = localStorage.getItem("rc-mute") === "true";
+
+  const sendMuteState = () => {
+    if (trayFrame?.contentWindow) {
+      trayFrame.contentWindow.postMessage({ type: "updateMute", muted: savedMute }, "*");
+    }
+  };
+
+  if (trayFrame.contentWindow) sendMuteState();
+  else trayFrame.addEventListener("load", sendMuteState);
+});
+
+
 
   // Tray messages + shutdown
   window.addEventListener('message', e=>{
@@ -652,22 +751,27 @@ window.addEventListener("message", (e) => {
   }
 
   // 2. Launch app requests
-  if (e.data.type === "openApp") {
-    console.log("[DESKTOP] openApp request for", e.data.app);
-    const path = e.data.app;
-    const id = path.split("/").pop().replace(".html", "");
+if (e.data.type === "openApp") {
+  console.log("[DESKTOP] openApp request for", e.data.app);
 
-    if (windows.has("run")) closeWin("run");
+  // ✅ Always close Start Menu before opening any app
+  closeStartMenu();
 
-    openApp({
-      id,
-      title: id.charAt(0).toUpperCase() + id.slice(1),
-      icon: "./media/icons/" + id + ".png",
-      app: path,
-      width: 600,
-      height: 400
-    });
-  }
+  const path = e.data.app;
+  const id = path.split("/").pop().replace(".html", "");
+
+  if (windows.has("run")) closeWin("run");
+
+  openApp({
+    id,
+    title: id.charAt(0).toUpperCase() + id.slice(1),
+    icon: "./media/icons/" + id + ".png",
+    app: path,
+    width: 600,
+    height: 400
+  });
+}
+
 
   // 3. Close Run
   if (e.data.type === "closeRun") {
@@ -676,6 +780,174 @@ window.addEventListener("message", (e) => {
   }
 });
 
+// === Personalization Message Handling ===
+window.addEventListener("message", (e) => {
+  const data = e.data;
+  if (!data || !data.type) return;
+
+  // --- Apply personalization settings from /system/personalize.html ---
+  if (data.type === "updatePersonalization") {
+    console.log("🎨 Applying theme:", data);
+
+    // Wallpaper
+    if (data.wallpaper) {
+      document.body.style.backgroundImage = `url('${data.wallpaper}')`;
+      localStorage.setItem("chilled_wallpaper", data.wallpaper);
+    }
+
+    // Theme colors
+    if (data.theme) {
+      const themes = {
+        classic: { bg: "#c0c0c0", hl: "#000080", text: "#000000" },
+        lavender: { bg: "#d8c0ff", hl: "#8060c0", text: "#000000" },
+        midnight: { bg: "#1a1a2e", hl: "#000080", text: "#ffffff" },
+        mint: { bg: "#c0ffd8", hl: "#409060", text: "#000000" }
+      };
+      const t = themes[data.theme] || themes.classic;
+      document.documentElement.style.setProperty("--win-bg", t.bg);
+      document.documentElement.style.setProperty("--win-hl", t.hl);
+      document.body.style.backgroundColor = t.bg;
+      localStorage.setItem("chilled_theme", data.theme);
+
+      // Update titlebar colors dynamically
+      document.querySelectorAll(".titlebar").forEach(tb => {
+        tb.style.background = t.hl;
+        tb.style.color = t.text;
+      });
+    }
+
+    // Screen saver
+    if (data.saver) {
+      localStorage.setItem("chilled_saver", data.saver);
+      window.selectedSaver = data.saver;
+    }
+
+    // Delay
+    if (data.saverDelay) {
+      localStorage.setItem("chilled_saverDelay", data.saverDelay);
+      window.SCREEENSAVER_DELAY = data.saverDelay * 60 * 1000;
+      resetScreensaverTimer();
+    }
+  }
+
+  // --- Test the screen saver on command ---
+  if (data.type === "testScreensaver") {
+    console.log("🕶️ Testing screensaver");
+    startScreensaver();
+  }
+});
+
+// === Load saved personalization on startup ===
+window.addEventListener("load", () => {
+  const savedWallpaper = localStorage.getItem("chilled_wallpaper");
+  const savedTheme = localStorage.getItem("chilled_theme");
+  const savedSaver = localStorage.getItem("chilled_saver");
+  const savedDelay = localStorage.getItem("chilled_saverDelay");
+
+  if (savedWallpaper) document.body.style.backgroundImage = `url('${savedWallpaper}')`;
+  if (savedTheme) {
+    const themes = {
+      classic: { bg: "#c0c0c0", hl: "#000080", text: "#000000" },
+      lavender: { bg: "#d8c0ff", hl: "#8060c0", text: "#000000" },
+      midnight: { bg: "#1a1a2e", hl: "#000080", text: "#ffffff" },
+      mint: { bg: "#c0ffd8", hl: "#409060", text: "#000000" }
+    };
+    const t = themes[savedTheme] || themes.classic;
+    document.documentElement.style.setProperty("--win-bg", t.bg);
+    document.documentElement.style.setProperty("--win-hl", t.hl);
+    document.body.style.backgroundColor = t.bg;
+  }
+  if (savedSaver) window.selectedSaver = savedSaver;
+  if (savedDelay) window.SCREEENSAVER_DELAY = savedDelay * 60 * 1000;
+});
+
+// === GLOBAL AUDIO VOLUME CONTROL ===
+let rcVolume = parseFloat(localStorage.getItem("rc-volume") || "0.5");
+let rcMute = localStorage.getItem("rc-mute") === "true";
+
+function applyGlobalVolume() {
+  // Clamp & sanitize
+  const level = rcMute ? 0 : Math.min(Math.max(parseFloat(rcVolume) || 0, 0), 1);
+
+  document.querySelectorAll("audio, video").forEach(el => {
+    try {
+      if (!isNaN(level) && el && typeof el.volume === "number") {
+        el.volume = level;
+      }
+    } catch (err) {
+      console.warn("⚠️ Skipped invalid media element:", err);
+    }
+  });
+
+  console.log(`🔊 Volume applied: ${(level * 100).toFixed(0)}%`);
+}
+
+
+// Listen for messages from Volume app
+window.addEventListener("message", (e) => {
+  const data = e.data;
+  if (!data || !data.type) return;
+
+  if (data.type === "setVolume") {
+    rcVolume = data.level;
+    localStorage.setItem("rc-volume", Math.round(data.level * 100));
+    applyGlobalVolume();
+  }
+});
+
+// Apply saved volume at startup
+window.addEventListener("load", () => {
+  applyGlobalVolume();
+// Sync mute icon on boot
+const trayFrame = document.getElementById("tray");
+const savedMute = localStorage.getItem("rc-mute") === "true";
+trayFrame.addEventListener("load", () => {
+  trayFrame.contentWindow.postMessage({ type: "updateMute", muted: savedMute }, "*");
+});
+});
+
+// === GLOBAL NETWORK STATE ===
+let rcOnline = localStorage.getItem("rc-online") === "true";
+
+// Inform tray of connection status
+function updateNetworkState(online) {
+  rcOnline = online;
+  localStorage.setItem("rc-online", online);
+  const trayFrame = document.getElementById("tray");
+  if (trayFrame?.contentWindow) {
+    trayFrame.contentWindow.postMessage({ type: "updateNetwork", online }, "*");
+  }
+  console.log(`🌐 Network ${online ? "connected" : "disconnected"}`);
+}
+
+// Simulate toggling network
+window.toggleNetworkConnection = function() {
+  updateNetworkState(!rcOnline);
+};
+
+// Respond to app messages requesting connection
+window.addEventListener("message", (e) => {
+  if (e.data?.type === "checkNetwork") {
+    e.source.postMessage({ type: "networkStatus", online: rcOnline }, "*");
+  }
+
+  if (e.data?.type === "connectNetwork") {
+    updateNetworkState(true);
+  }
+
+  if (e.data?.type === "disconnectNetwork") {
+    updateNetworkState(false);
+  }
+});
+
+// Initialize tray with saved state
+window.addEventListener("load", () => {
+  const trayFrame = document.getElementById("tray");
+  const sendState = () =>
+    trayFrame.contentWindow.postMessage({ type: "updateNetwork", online: rcOnline }, "*");
+  if (trayFrame.contentWindow) sendState();
+  else trayFrame.addEventListener("load", sendState);
+});
 
   resetScreensaverTimer();
 </script>

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ChillScape Offline Mode</title>
+<style>
+  html, body {
+    margin: 0;
+    height: 100%;
+    width: 100%;
+    background: black;
+    color: lime;
+    font-family: "Courier New", monospace;
+    font-size: 14px;
+    overflow: hidden;
+  }
+  pre {
+    margin: 0;
+    padding: 10px;
+    height: 100%;
+    width: 100%;
+  }
+</style>
+</head>
+<body>
+<pre id="screen"></pre>
+
+<script>
+const scr = document.getElementById('screen');
+
+/* ============= Boot Sequence ============= */
+const bootLines = [
+  'Initializing ChillScape Offline Mode...',
+  'Loading ASCII modules...',
+  'Verifying chill factor...',
+  'Launching ChillNet sandbox...',
+  '',
+  'System ready. Press SPACE to start.'
+];
+let bootIndex = 0;
+function bootSequence() {
+  if (bootIndex < bootLines.length) {
+    scr.textContent += bootLines[bootIndex++] + '\n';
+    setTimeout(bootSequence, 400);
+  } else {
+    setTimeout(startGame, 1200);
+  }
+}
+bootSequence();
+
+/* ============= Game Logic ============= */
+function startGame() {
+  scr.textContent = '';
+
+  let width = Math.floor(window.innerWidth / 9);  // ~character width scaling
+  let height = Math.floor(window.innerHeight / 20);
+  if (height < 10) height = 10;
+  if (width < 60) width = 60;
+
+  let catY = 0;
+  let velocity = 0;
+  let obstacles = [];
+  let frame = 0;
+  let score = 0;
+  let playing = true;
+  let nextObstacleIn = randInt(30, 60);
+
+  const gravity = -0.35;
+  const jumpStrength = 3;
+  const ground = 0;
+
+  function randInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
+  function draw() {
+    const buffer = Array.from({ length: height }, () => Array(width).fill(' '));
+    buffer[height - 1].fill('_');
+
+    const y = Math.max(0, Math.min(height - 2, Math.round(height - 2 - catY)));
+    const cat = ['=', '^', '.', '^', '='];
+    cat.forEach((ch, i) => {
+      const x = 5 + i;
+      if (x < width) buffer[y][x] = ch;
+    });
+
+    obstacles.forEach(o => {
+      for (let h = 0; h < 2; h++) {
+        const yy = height - 2 - h;
+        if (yy >= 0 && o >= 0 && o < width) buffer[yy][o] = '#';
+      }
+    });
+
+    const lines = buffer.map(r => r.join('')).join('\n');
+    scr.textContent =
+      'CHILLSCAPE OFFLINE MODE\n' +
+      'Score: ' + score + '   (Press SPACE to jump)\n\n' +
+      lines +
+      (playing ? '' : '\n\nGAME OVER! Press [R] to restart.');
+  }
+
+  function update() {
+    if (!playing) return;
+    frame++;
+
+    // physics
+    velocity += gravity;
+    catY += velocity;
+    if (catY <= 0) { catY = 0; velocity = 0; }
+    if (catY > height - 3) { catY = height - 3; velocity = 0; }
+
+    // obstacle logic
+    nextObstacleIn--;
+    if (nextObstacleIn <= 0) {
+      obstacles.push(width - 1);
+      nextObstacleIn = randInt(25, 70); // random gap before next
+    }
+    obstacles = obstacles.map(o => o - 1).filter(o => o > 0);
+
+    // collision detection
+    obstacles.forEach(o => {
+      if (o >= 5 && o <= 9 && catY < 2) playing = false;
+    });
+
+    // scoring
+    if (frame % 10 === 0 && playing) score++;
+
+    draw();
+  }
+
+  function loop() {
+    update();
+    if (playing) setTimeout(loop, 1000 / 30);
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.code === 'Space' && playing && catY === 0) velocity = jumpStrength;
+    if (e.key.toLowerCase() === 'r' && !playing) location.reload();
+  });
+
+  draw();
+  setTimeout(loop, 300);
+  window.focus();
+
+  // Adjust screen if resized
+  window.addEventListener('resize', () => {
+    width = Math.floor(window.innerWidth / 9);
+    height = Math.floor(window.innerHeight / 20);
+    if (height < 10) height = 10;
+    if (width < 60) width = 60;
+  });
+}
+</script>
+</body>
+</html>

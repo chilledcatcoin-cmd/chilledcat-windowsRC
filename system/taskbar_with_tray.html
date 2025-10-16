@@ -9,8 +9,8 @@ body {
   height: 100%;
   width: 100%;
   display: flex;
-  align-items: center;     /* centers vertically */
-  justify-content: flex-end;  /* icons+clock stick to right */
+  align-items: center;
+  justify-content: flex-end;
   font-family: "MS Sans Serif", sans-serif;
   font-size: 12px;
   color: black;
@@ -19,34 +19,32 @@ body {
 
 #tray {
   display: flex;
-  align-items: center;   /* keeps icons+clock aligned center inside tray */
+  align-items: center;
   gap: 8px;
   padding: 0 6px;
   height: 100%;
 }
 
-#tray img { 
-  width: 16px; 
-  height: 16px; 
-  image-rendering: pixelated; 
-  cursor: pointer; 
+#tray img {
+  width: 16px;
+  height: 16px;
+  image-rendering: pixelated;
+  cursor: pointer;
+  transition: filter 0.2s ease;
 }
 
-#clock { 
-  font-size: 12px; 
-  min-width: 60px; 
+#clock {
+  font-size: 12px;
+  min-width: 60px;
   text-align: right;
   background: #c0c0c0;
   padding: 2px 6px;
   line-height: 16px;
-
-  /* subtle inset like Win95 clock */
   border-top: 1px solid #fff;
   border-left: 1px solid #fff;
   border-right: 1px solid #808080;
   border-bottom: 1px solid #808080;
 }
-
 </style>
 </head>
 <body>
@@ -59,16 +57,58 @@ body {
   </div>
 
 <script>
-  function updateClock(){
+  const volumeIcon = document.getElementById("volumeBtn");
+  const networkIcon = document.getElementById("networkBtn");
+
+  // --- Clock ---
+  function updateClock() {
     const now = new Date();
     let h = now.getHours(), m = now.getMinutes();
-    let ampm = h >= 12 ? 'PM' : 'AM';
+    let ampm = h >= 12 ? "PM" : "AM";
     h = h % 12; if (h === 0) h = 12;
-    if (m < 10) m = '0' + m;
-    document.getElementById('clock').textContent = h + ':' + m + ' ' + ampm;
+    if (m < 10) m = "0" + m;
+    document.getElementById("clock").textContent = h + ":" + m + " " + ampm;
   }
   setInterval(updateClock, 1000);
   updateClock();
+
+  // --- Handle messages from desktop ---
+  window.addEventListener("message", (e) => {
+    if (!e.data || !e.data.type) return;
+    console.log("[TRAY] Received message:", e.data);
+
+    if (e.data.type === "updateMute") {
+      volumeIcon.src = e.data.muted
+        ? "../media/icons/volume_nope.png"
+        : "../media/icons/volume.png";
+    }
+
+    if (e.data.type === "updateNetwork") {
+      const online = e.data.online;
+      networkIcon.src = online
+        ? "../media/icons/network.png"
+        : "../media/icons/network_off.png";
+      networkIcon.title = online
+        ? "Connected to ChillNet"
+        : "No network connection";
+    }
+  });
+
+  // --- Restore saved states ---
+  window.addEventListener("load", () => {
+    const savedMute = localStorage.getItem("rc-mute") === "true";
+    const savedOnline = localStorage.getItem("rc-online") === "true";
+    volumeIcon.src = savedMute
+      ? "../media/icons/volume_nope.png"
+      : "../media/icons/volume.png";
+    networkIcon.src = savedOnline
+      ? "../media/icons/network.png"
+      : "../media/icons/network_off.png";
+    networkIcon.title = savedOnline ? "Connected to ChillNet" : "No connection";
+  });
 </script>
+
 </body>
 </html>
+
+
