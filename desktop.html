@@ -547,6 +547,13 @@ console.log("[DESKTOP] Sent mute update to tray:", rcMute);
       trayFrame.contentWindow.postMessage({ type: "setVolume", level: rcVolume }, "*");
     }
   }
+  if (data.type === "checkVolumeState") {
+    e.source.postMessage({
+      type: "checkVolumeStateResponse",
+      level: rcVolume,
+      muted: rcMute
+    }, "*");
+  }
 });
 
 // --- Restore saved mute state on load ---
@@ -752,24 +759,27 @@ window.addEventListener("message", (e) => {
 
   // 2. Launch app requests
 if (e.data.type === "openApp") {
+if (e.data.app === "chillpad" && "file" in e.data) return; // let the popup handler do it
   console.log("[DESKTOP] openApp request for", e.data.app);
 
-  // ✅ Always close Start Menu before opening any app
   closeStartMenu();
 
   const path = e.data.app;
   const id = path.split("/").pop().replace(".html", "");
 
+  // 🧠 Try to find matching icon/tray entry for proper window sizing
+  const ic =
+    icons.find(i => i.app === path || i.id === id) ||
+    Object.values(trayApps).find(i => i.app === path || i.id === id);
+
+  const width  = ic?.width  || e.data.width  || 600;
+  const height = ic?.height || e.data.height || 400;
+  const title  = ic?.title  || id.charAt(0).toUpperCase() + id.slice(1);
+  const icon   = ic?.icon   || "./media/icons/" + id + ".png";
+
   if (windows.has("run")) closeWin("run");
 
-  openApp({
-    id,
-    title: id.charAt(0).toUpperCase() + id.slice(1),
-    icon: "./media/icons/" + id + ".png",
-    app: path,
-    width: 600,
-    height: 400
-  });
+  openApp({ id, title, icon, app: path, width, height });
 }
 
 
@@ -948,6 +958,57 @@ window.addEventListener("load", () => {
   if (trayFrame.contentWindow) sendState();
   else trayFrame.addEventListener("load", sendState);
 });
+
+window.addEventListener("message", (event) => {
+  const data = event.data;
+  if (!data || data.type !== "openApp") return;
+
+  if (data.app === "chillpad") {
+    openChillPadPopup(data.file);
+  }
+});
+
+function openChillPadPopup(filePath) {
+  // Prevent duplicates
+  const id = "chillpadPopup";
+  const existing = document.getElementById(id);
+  if (existing) existing.remove();
+
+  // Create window
+  const win = document.createElement("div");
+  win.id = id;
+  win.className = "win";
+  win.style.width = "700px";
+  win.style.height = "500px";
+  win.style.left = "120px";
+  win.style.top = "100px";
+  win.style.zIndex = ++zTop;
+  win.innerHTML = `
+    <div class="titlebar" onmousedown="dragStart(event,this.parentElement)">
+      <span>ChillPad</span>
+      <div class="buttons">
+        <button onclick="closeWin('${id}')">X</button>
+      </div>
+    </div>
+    <iframe id="chillpadFrame" src="./apps/chillpad.html" 
+      style="width:100%;height:calc(100% - 24px);border:0;background:#fff;"></iframe>
+  `;
+
+  desktop.appendChild(win);
+
+  // Remember the window
+  windows.set(id, win);
+
+  const name = filePath.split("/").pop();
+  win.querySelector(".titlebar span").textContent = `ChillPad — ${name}`;
+
+  const frame = win.querySelector("#chillpadFrame"); // or the iframe you created
+  frame.onload = () => {
+    frame.contentWindow.postMessage({ type: "openFile", path: filePath }, "*");
+  };
+}
+
+
 
   resetScreensaverTimer();
 </script>

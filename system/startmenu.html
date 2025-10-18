@@ -87,16 +87,17 @@
   }
   window.onload = sendHeight;
 
-  // New Programs popup (opens its own HTML window)
 function openPrograms() {
   // ✅ Close Start Menu immediately
   window.top.postMessage({ type: 'closeStartMenu' }, '*');
 
-  // Then open the Programs window
+  // Then open the Programs window with custom size
   window.top.postMessage({
     type: 'openApp',
     app: './system/programs.html',
-    id: 'programs'
+    id: 'programs',
+    width: 600,
+    height: 450
   }, '*');
 }
 

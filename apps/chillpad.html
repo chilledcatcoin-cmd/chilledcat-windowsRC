@@ -147,6 +147,39 @@
   const assistantImg=document.getElementById("assistant-img");
   const options=document.getElementById("assistant-options");
 
+// 🗂️ Load file if ?file= parameter is present
+const params = new URLSearchParams(window.location.search);
+const filePath = params.get("file");
+
+if (filePath) {
+  document.title = "ChillPad — " + filePath.split("/").pop();
+
+  // Attempt to fetch and load the text file
+  (async () => {
+    try {
+      const base = window.location.pathname
+        .replace(/\/apps\/.*/, "")
+        .replace(/\/$/, "");
+      const rel = `${base}${decodeURIComponent(filePath)}`;
+      console.log("📝 Loading file:", rel);
+      const res = await fetch(rel, { cache: "no-store" });
+
+      if (res.ok) {
+        const text = await res.text();
+        editor.value = text;
+        showAssistant("Opened " + filePath.split("/").pop());
+      } else {
+        editor.value = "[Error] Could not open file: " + filePath;
+        showAssistant("Hmm... couldn't read that file 😿");
+      }
+    } catch (err) {
+      editor.value = "[Error] Failed to load file.";
+      console.warn("Load error:", err);
+      showAssistant("Something went wrong while fetching 🧊");
+    }
+  })();
+}
+
   // Menu actions
   function newFile(){
     if(confirm("Clear the text?")) editor.value="";
@@ -250,6 +283,40 @@
     showAssistant(msg);
     options.style.display="none";
   }
+
+// 📨 Receive file path from desktop
+window.addEventListener("message", (event) => {
+  if (!event.data || event.data.type !== "openFile") return;
+  const filePath = event.data.path;
+  loadFile(filePath);
+});
+
+// 🧠 Refactor your fetch logic into a function:
+async function loadFile(filePath) {
+  document.title = "ChillPad — " + filePath.split("/").pop();
+
+  let safePath = decodeURIComponent(filePath).replace(/ /g, "%20").replace(/\\/g, "/");
+  const base = window.location.pathname.replace(/\/apps\/chillpad\.html$/, "").replace(/\/$/, "");
+  const fileURL = `${base}${safePath.startsWith("/") ? safePath : "/" + safePath}`;
+  console.log("📝 Fetching file from:", fileURL);
+
+  try {
+    const res = await fetch(fileURL, { cache: "no-store" });
+    if (res.ok) {
+      const text = await res.text();
+      editor.value = text;
+      showAssistant("Opened " + filePath.split("/").pop());
+    } else {
+      editor.value = `[Error] Could not open file: ${filePath}\nStatus: ${res.status}`;
+      showAssistant("Couldn’t read that file 😿");
+    }
+  } catch (err) {
+    editor.value = `[Error] Failed to load file: ${filePath}\n${err}`;
+    showAssistant("Fetch error 🧊");
+  }
+}
+
+
 </script>
 </body>
 </html>

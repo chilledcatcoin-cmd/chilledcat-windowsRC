@@ -13,12 +13,6 @@
     padding: 12px;
   }
 
-  h1 {
-    margin: 0 0 10px 4px;
-    font-size: 14px;
-    color: #000080;
-  }
-
   .grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, 110px);
@@ -29,11 +23,15 @@
   .item {
     text-align: center;
     cursor: default;
+    user-select: none;
+    padding: 4px;
+    border: 1px solid transparent;
   }
 
   .item:hover {
     background: #000080;
     color: white;
+    border: 1px solid #ffffff;
   }
 
   .item img {
@@ -59,8 +57,6 @@
 </head>
 <body>
 
-  <h1>Programs</h1>
-
   <!-- Games Section -->
   <div class="folder">Games</div>
   <div class="grid">
@@ -75,6 +71,10 @@
     <div class="item" ondblclick="openApp('./apps/catclicker.html')">
       <img src="../media/icons/app_catclicker.png" alt="">
       Cat Clicker ’97+
+    </div>
+    <div class="item" ondblclick="openApp('./apps/mediaplayer.html')">
+      <img src="../media/icons/app_mediaplayer.png" alt="">
+      ChilledAmp
     </div>
   </div>
 
@@ -130,14 +130,11 @@
       <img src="../media/icons/run.png" alt="">
       Run
     </div>
-<div class="item" ondblclick="openApp('./system/personalize.html')">
-  <img src="../media/icons/settings.png" alt="">
-  Personalize
-</div>
   </div>
 
 <script>
 function openApp(path) {
+  // Send message to desktop.html to open the app window
   window.top.postMessage({ type: "openApp", app: path }, "*");
 }
 </script>

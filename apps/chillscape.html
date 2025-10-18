@@ -53,15 +53,15 @@
   }
 
   /* Modal overlay for offline prompt */
-  .offline-overlay {
+  .offline-overlay, .splash-overlay {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.3);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 999;
   }
+  .offline-overlay { background: rgba(0,0,0,0.3); }
   .offline-dialog {
     background: #c0c0c0;
     border: 2px solid #000;
@@ -86,8 +86,28 @@
     justify-content: center;
     gap: 10px;
   }
-  .offline-buttons button {
-    min-width: 90px;
+  .offline-buttons button { min-width: 90px; }
+
+  /* Retro splash screen */
+  .splash-overlay {
+    background: #000080;
+    color: #fff;
+    flex-direction: column;
+    font-family: "MS Sans Serif", sans-serif;
+    text-align: center;
+    animation: fadeOut 1s ease-out 2s forwards;
+  }
+  .splash-logo {
+    font-size: 22px;
+    font-weight: bold;
+    margin-bottom: 10px;
+  }
+  .splash-sub {
+    font-size: 13px;
+    opacity: 0.8;
+  }
+  @keyframes fadeOut {
+    to { opacity: 0; visibility: hidden; }
   }
 </style>
 </head>
@@ -105,6 +125,12 @@
 
   <iframe id="viewer" src=""></iframe>
 
+  <!-- Splash -->
+  <div class="splash-overlay" id="splash">
+    <div class="splash-logo">🌐 ChillScape Navigator</div>
+    <div class="splash-sub">Loading ChillNet system modules...</div>
+  </div>
+
 <script>
 (() => {
   const HOMEPAGE = "../website/index.html";
@@ -120,35 +146,68 @@
   let historyStack = [HOMEPAGE];
   let historyIndex = 0;
 
-/* -------------------------------
-   Listen for global connection events
---------------------------------*/
-window.addEventListener("message", (event) => {
-  const data = event.data || {};
-  if (data.type === "connectNetwork") {
-    // ✅ Modem finished connecting
-    localStorage.setItem("rc-online", "true");
-    const overlay = document.querySelector(".offline-overlay");
-    if (overlay) overlay.remove();
-    navigateTo("about:home");
-  }
-
-  if (data.type === "disconnectNetwork") {
-    // ❌ Lost connection
-    localStorage.setItem("rc-online", "false");
-    showOfflinePrompt();
-  }
-});
-
   /* -------------------------------
-     Offline Check & Modal
+     System Volume + Sounds
   --------------------------------*/
-  window.addEventListener("load", () => {
-    const online = localStorage.getItem("rc-online") === "true";
-    if (!online) showOfflinePrompt();
-    else navigateTo("about:home");
+  let systemVolume = parseFloat(localStorage.getItem("rc-volume")) || 1.0;
+  let sfxConnect, sfxPage;
+
+  try {
+    sfxConnect = new Audio("../media/sounds/connect_chime.mp3");
+    sfxPage = new Audio("../media/sounds/page_click.mp3");
+  } catch (e) {
+    console.warn("⚠️ Audio not available:", e);
+  }
+
+  function applyVolume() {
+    try { if (sfxConnect) sfxConnect.volume = systemVolume; } catch {}
+    try { if (sfxPage) sfxPage.volume = systemVolume; } catch {}
+  }
+
+  window.addEventListener("message", (e) => {
+    if (e.data?.type === "setVolume") {
+      systemVolume = Math.max(0, Math.min(1, e.data.value));
+      localStorage.setItem("rc-volume", systemVolume.toString());
+      applyVolume();
+    }
   });
 
+  applyVolume();
+
+  /* -------------------------------
+     Global connection messages
+  --------------------------------*/
+  window.addEventListener("message", (event) => {
+    const data = event.data || {};
+    if (data.type === "connectNetwork") {
+      localStorage.setItem("rc-online", "true");
+      const overlay = document.querySelector(".offline-overlay");
+      if (overlay) overlay.remove();
+      try { sfxConnect?.play(); } catch {}
+      navigateTo("about:home");
+    }
+    if (data.type === "disconnectNetwork") {
+      localStorage.setItem("rc-online", "false");
+      showOfflinePrompt();
+    }
+  });
+
+  /* -------------------------------
+     Startup Logic + Splash
+  --------------------------------*/
+  window.addEventListener("load", () => {
+    const splash = document.getElementById("splash");
+    setTimeout(() => {
+      splash.remove();
+      const online = localStorage.getItem("rc-online") === "true";
+      if (online) navigateTo("about:home");
+      else showOfflinePrompt();
+    }, 2500); // 2.5s splash delay
+  });
+
+  /* -------------------------------
+     Offline Prompt
+  --------------------------------*/
   function showOfflinePrompt() {
     const overlay = document.createElement("div");
     overlay.className = "offline-overlay";
@@ -166,44 +225,41 @@ window.addEventListener("message", (event) => {
     `;
     document.body.appendChild(overlay);
 
-overlay.querySelector("#connectNow").addEventListener("click", () => {
-  // Launch the dial-up networking app
-  window.top.postMessage({ type: "openApp", app: "./apps/network.html" }, "*");
+    overlay.querySelector("#connectNow").addEventListener("click", () => {
+      window.top.postMessage({ type: "openApp", app: "./apps/network.html" }, "*");
 
-  // Add a small “connecting…” status message
-  const status = document.createElement("p");
-  status.id = "connectingStatus";
-  status.textContent = "Connecting to ChillNet...";
-  status.style.color = "#000080";
-  status.style.marginTop = "6px";
-  overlay.querySelector(".offline-dialog").appendChild(status);
+      const status = document.createElement("p");
+      status.id = "connectingStatus";
+      status.textContent = "Connecting to ChillNet...";
+      status.style.color = "#000080";
+      status.style.marginTop = "6px";
+      overlay.querySelector(".offline-dialog").appendChild(status);
 
-  // Periodically check if the modem finished connecting
-  const checkInterval = setInterval(() => {
-    if (localStorage.getItem("rc-online") === "true") {
-      clearInterval(checkInterval);
-      const overlay = document.querySelector(".offline-overlay");
-      if (overlay) overlay.remove();
-      navigateTo("about:home");
-    }
-  }, 1000);
+      const checkInterval = setInterval(() => {
+        if (localStorage.getItem("rc-online") === "true") {
+          clearInterval(checkInterval);
+          overlay.remove();
+          navigateTo("about:home");
+        }
+      }, 1000);
 
-  // Optional timeout after 30 s
-  setTimeout(() => {
-    if (localStorage.getItem("rc-online") !== "true") {
-      status.textContent = "Unable to establish connection. Please try again.";
-      status.style.color = "red";
-      clearInterval(checkInterval);
-    }
-  }, 30000);
-});
+      setTimeout(() => {
+        if (localStorage.getItem("rc-online") !== "true") {
+          status.textContent = "Unable to establish connection. Please try again.";
+          status.style.color = "red";
+          clearInterval(checkInterval);
+        }
+      }, 30000);
+    });
 
+    overlay.querySelector("#workOffline").addEventListener("click", () => {
+      overlay.remove();
+      viewer.src = "./offline_game.html";
+    });
 
-overlay.querySelector("#workOffline").addEventListener("click", () => {
-  overlay.remove();
-  viewer.src = "./offline_game.html";
-});
-
+    overlay.querySelector("#cancelBtn").addEventListener("click", () => {
+      window.top.postMessage({ type: "closeWin", id: "chillscape" }, "*");
+    });
   }
 
   /* -------------------------------
@@ -224,17 +280,16 @@ overlay.querySelector("#workOffline").addEventListener("click", () => {
       if (path.includes("/apps/"))    return "./apps/"    + path.split("/apps/")[1];
       if (path.includes("/system/"))  return "./system/"  + path.split("/system/")[1];
       return href;
-    } catch {
-      return href;
-    }
+    } catch { return href; }
   }
 
   function allowed(url) {
-    return url === "about:home" || url === "about:blank" || ALLOW_PREFIXES.some(p => url.startsWith(p));
+    return url === "about:home" || url === "about:blank" ||
+           ALLOW_PREFIXES.some(p => url.startsWith(p));
   }
 
   function navigateTo(urlLike) {
-    let url = urlLike.trim();
+    const url = urlLike.trim();
 
     if (url === "about:home") {
       setThrobberLoading(true);
@@ -244,6 +299,7 @@ overlay.querySelector("#workOffline").addEventListener("click", () => {
       urlBar.value = "about:home";
       return;
     }
+
     if (url === "about:blank") {
       viewer.src = "about:blank";
       viewer.srcdoc = "";
@@ -310,7 +366,9 @@ overlay.querySelector("#workOffline").addEventListener("click", () => {
   }
 
   goBtn.addEventListener("click", () => navigateTo(urlBar.value));
-  urlBar.addEventListener("keydown", (e) => { if (e.key === "Enter") navigateTo(urlBar.value); });
+  urlBar.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") navigateTo(urlBar.value);
+  });
   backBtn.addEventListener("click", goBack);
   fwdBtn.addEventListener("click", goForward);
   reloadBtn.addEventListener("click", reload);
@@ -319,10 +377,13 @@ overlay.querySelector("#workOffline").addEventListener("click", () => {
     let current = "about:blank";
     try {
       current = normalizeToProjectPath(viewer.contentWindow.location.href);
-    } catch { current = normalizeToProjectPath(viewer.src || "about:blank"); }
+    } catch {
+      current = normalizeToProjectPath(viewer.src || "about:blank");
+    }
     urlBar.value = (current === HOMEPAGE) ? "about:home" : current;
     if (historyStack[historyIndex] !== current && current !== "about:blank") pushHistory(current);
     setThrobberLoading(false);
+    try { sfxPage?.play(); } catch {}
   });
 })();
 </script>

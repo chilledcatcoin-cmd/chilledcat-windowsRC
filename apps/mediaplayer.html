@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ChilledAmp</title>
+<style>
+  body {
+    margin: 0;
+    background: #c0c0c0;
+    font-family: "MS Sans Serif", sans-serif;
+    font-size: 13px;
+    color: #000;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .titlebar {
+    background: linear-gradient(90deg, #000080, #4040a0);
+    color: #fff;
+    padding: 2px 8px;
+    font-weight: bold;
+    text-shadow: 1px 1px #000;
+  }
+
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #d0d0d0;
+    padding: 6px;
+    border-top: 2px solid #fff;
+    border-left: 2px solid #fff;
+    border-right: 2px solid #808080;
+    border-bottom: 2px solid #808080;
+  }
+
+  .controls button {
+    width: 28px;
+    height: 24px;
+    font-size: 12px;
+    background: #c0c0c0;
+    border: 2px outset #fff;
+    cursor: pointer;
+  }
+
+  .controls button:active {
+    border: 2px inset #404040;
+    background: #a0a0a0;
+  }
+
+  #progress {
+    flex: 1;
+    height: 6px;
+    background: #808080;
+    position: relative;
+    cursor: pointer;
+    margin: 0 6px;
+  }
+
+  #bar {
+    height: 100%;
+    background: #000080;
+    width: 0%;
+  }
+
+  #time {
+    width: 80px;
+    text-align: right;
+    font-size: 12px;
+  }
+
+  /* Volume paw control */
+  .volume-box {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-right: 6px;
+  }
+
+  #vol {
+    width: 80px;
+    accent-color: #000080;
+    cursor: pointer;
+  }
+
+  #mute {
+    background: #c0c0c0;
+    border: 2px outset #fff;
+    width: 26px;
+    height: 24px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  #mute.active {
+    background: #808080;
+    border: 2px inset #404040;
+  }
+
+  #playlist {
+    flex: 1;
+    background: #fff;
+    margin: 6px;
+    border: 2px inset #fff;
+    padding: 4px;
+    overflow-y: auto;
+  }
+
+  .track {
+    padding: 2px 4px;
+    cursor: pointer;
+  }
+  .track:hover, .track.active {
+    background: #000080;
+    color: #fff;
+  }
+
+  #cat {
+    width: 64px;
+    height: 64px;
+    image-rendering: pixelated;
+    margin: 6px auto;
+    display: block;
+  }
+</style>
+</head>
+<body>
+  <div class="controls">
+    <button id="prev">⏮</button>
+    <button id="play">▶️</button>
+    <button id="pause">⏸</button>
+    <button id="stop">⏹</button>
+    <button id="next">⏭</button>
+    <div id="progress"><div id="bar"></div></div>
+    <div id="time">0:00 / 0:00</div>
+
+    <div class="volume-box">
+      <input type="range" id="vol" min="0" max="1" step="0.01" value="0.5">
+      <button id="mute">🔇</button>
+    </div>
+  </div>
+
+  <img id="cat" src="../media/icons/app_chillpad.gif" alt="Chilled Cat bobbing">
+
+  <div id="playlist"></div>
+
+<script>
+const tracks = [
+  { title: "ChilledAmp Intro", src: "../media/mediaplayer/demo.mp3" }
+];
+
+const playlist = document.getElementById("playlist");
+const audio = new Audio();
+let current = 0;
+let progress = document.getElementById("bar");
+let timeDisplay = document.getElementById("time");
+let cat = document.getElementById("cat");
+let volumeSlider = document.getElementById("vol");
+let muteBtn = document.getElementById("mute");
+
+// 🐾 Build playlist
+tracks.forEach((t, i) => {
+  const div = document.createElement("div");
+  div.className = "track";
+  div.textContent = t.title;
+  div.onclick = () => playTrack(i);
+  playlist.appendChild(div);
+})
+
+playTrack(0);
+
+function playTrack(i) {
+  current = i;
+  document.querySelectorAll(".track").forEach(t => t.classList.remove("active"));
+  playlist.children[i].classList.add("active");
+  audio.src = tracks[i].src;
+  audio.play();
+  cat.src = "../media/icons/app_chillpad.gif";
+}
+
+document.getElementById("play").onclick = () => playTrack(current);
+document.getElementById("pause").onclick = () => { audio.pause(); };
+document.getElementById("stop").onclick = () => { audio.pause(); audio.currentTime = 0; };
+document.getElementById("next").onclick = () => playTrack((current+1)%tracks.length);
+document.getElementById("prev").onclick = () => playTrack((current-1+tracks.length)%tracks.length);
+
+audio.addEventListener("timeupdate", () => {
+  const pct = (audio.currentTime / audio.duration) * 100;
+  progress.style.width = pct + "%";
+  timeDisplay.textContent = `${formatTime(audio.currentTime)} / ${formatTime(audio.duration)}`;
+});
+
+function formatTime(t) {
+  if (isNaN(t)) return "0:00";
+  const m = Math.floor(t / 60);
+  const s = Math.floor(t % 60).toString().padStart(2,"0");
+  return `${m}:${s}`;
+}
+
+// Scrub bar
+document.getElementById("progress").onclick = (e) => {
+  const rect = e.target.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const pct = x / rect.width;
+  audio.currentTime = pct * audio.duration;
+};
+
+// === 🐾 GLOBAL VOLUME SYNC ===
+
+// 🔊 Receive global updates
+window.addEventListener("message", (e) => {
+  const data = e.data;
+  if (!data || !data.type) return;
+
+  if (data.type === "setVolume") {
+    audio.volume = parseFloat(data.level);
+    volumeSlider.value = audio.volume;
+  }
+
+  if (data.type === "updateMute") {
+    audio.muted = !!data.muted;
+    muteBtn.classList.toggle("active", audio.muted);
+  }
+
+  if (data.type === "checkVolumeStateResponse") {
+    // response from desktop check
+    audio.volume = parseFloat(data.level);
+    audio.muted = !!data.muted;
+    volumeSlider.value = audio.volume;
+    muteBtn.classList.toggle("active", audio.muted);
+  }
+});
+
+// 🎚️ Local changes forward to desktop
+volumeSlider.addEventListener("input", () => {
+  const level = parseFloat(volumeSlider.value);
+  audio.volume = level;
+  parent.postMessage({ type: "setVolume", level }, "*");
+});
+
+muteBtn.addEventListener("click", () => {
+  const newMute = !audio.muted;
+  audio.muted = newMute;
+  muteBtn.classList.toggle("active", newMute);
+  parent.postMessage({ type: "updateMute", muted: newMute }, "*");
+});
+
+// Request initial volume on startup
+parent.postMessage({ type: "checkVolumeState" }, "*");
+
+</script>
+</body>
+</html>

@@ -25,6 +25,16 @@
     padding:3px 8px; background:#e0e0e0;
     border:2px outset #fff; cursor:pointer;
   }
+  .breadcrumb{
+    background:#fff;
+    border-bottom:1px solid var(--border);
+    padding:3px 8px;
+    color:var(--title);
+    font-size:12px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
   .content{
     flex:1; background:#fff; margin:6px;
     border:2px inset #fff; overflow:auto; padding:10px;
@@ -37,8 +47,9 @@
   .item{
     display:flex; flex-direction:column;
     align-items:center; gap:6px;
-    padding:6px; cursor:pointer;
+    padding:6px; cursor:default;
     border:1px solid transparent; border-radius:4px;
+    user-select:none;
   }
   .item:hover{background:var(--highlight); border-color:#c9defe;}
   .thumb{width:48px;height:48px;image-rendering:pixelated;}
@@ -48,24 +59,25 @@
     padding:3px 8px; font-size:12px;
     display:flex; justify-content:space-between;
   }
+  .empty-msg{
+    padding:10px; color:#444;
+    font-style:italic;
+  }
 </style>
 </head>
 <body>
-  <!-- Hidden title element for script compatibility -->
   <span id="titleText" style="display:none"></span>
 
-  <!-- Toolbar -->
   <div class="toolbar">
     <button class="btn" onclick="showDrives()">My Computer</button>
     <button class="btn" onclick="goUp()">Up</button>
     <button class="btn" onclick="openFind()">Find Files</button>
   </div>
 
-  <!-- Main content area -->
+  <div class="breadcrumb" id="breadcrumb">My Computer</div>
   <div class="content" id="content"></div>
   <div class="statusbar" id="status"><span></span><span></span></div>
 
-  <!-- Find window -->
   <iframe src="find.html" id="findWin"
           style="display:none;position:fixed;top:50%;left:50%;
                  transform:translate(-50%,-50%);
@@ -82,9 +94,11 @@ const drives=[
 let currentPath="/media/mnt";
 const content=document.getElementById("content");
 const status=document.getElementById("status");
+const breadcrumb=document.getElementById("breadcrumb");
 
 function showDrives(){
   currentPath="/media/mnt";
+  breadcrumb.textContent="My Computer";
   let html='<div class="item-grid">';
   for(const d of drives){
     html+=`
@@ -97,26 +111,27 @@ function showDrives(){
   content.innerHTML=html;
   status.innerHTML=`<span>${drives.length} drives</span><span>My Computer</span>`;
   document.querySelectorAll(".item.drive").forEach(it=>{
-    it.onclick=()=>openFolder(it.dataset.path);
+    it.ondblclick=()=>openFolder(it.dataset.path);
   });
 }
 
 async function openFolder(path){
   currentPath=path;
-  try{
-    const res=await fetch(path);
-    if(res.status===404){
-      alert("Please insert a disk into "+path);
-      return;
-    }
-  }catch{}
+  breadcrumb.textContent=path.replace("/media/mnt","This PC");
 
   const listing=await getFolderListing(path);
+
+  if(listing.length===0){
+    content.innerHTML=`<div class="empty-msg">This folder is empty.</div>`;
+    status.innerHTML=`<span>0 items</span><span>${path}</span>`;
+    return;
+  }
+
   let html='<div class="item-grid">';
   for(const item of listing){
     const icon=item.type==="folder"?"folder_1.png":"textfile.png";
     html+=`
-      <div class="item" data-path="${item.path}" data-type="${item.type}">
+      <div class="item" data-path="${item.path}" data-type="${item.type}" data-name="${item.name}">
         <img class="thumb" src="../media/icons/${icon}">
         <div>${item.name}</div>
       </div>`;
@@ -124,24 +139,35 @@ async function openFolder(path){
   html+='</div>';
   content.innerHTML=html;
   status.innerHTML=`<span>${listing.length} items</span><span>${path}</span>`;
+
+  // 🔹 Handle double-clicks *after* items exist
   document.querySelectorAll(".item").forEach(it=>{
-    const p=it.dataset.path;
-    const t=it.dataset.type;
-    it.onclick=()=>{
-      if(t==="folder") openFolder(p);
-      else window.open(p,"_blank");
-    };
+    const p = it.dataset.path;
+    const t = it.dataset.type;
+    const n = it.dataset.name;
+
+it.ondblclick = (ev) => {
+  ev.preventDefault();
+  ev.stopPropagation();
+
+  if (t === "folder") {
+    openFolder(p);
+  } else if (n.toLowerCase().endsWith(".txt")) {
+    openChillPad(p, ev);     // <-- pass ev
+  } else {
+    window.open(p, "_blank");
+  }
+};
+
+
   });
 }
 
 async function getFolderListing(path) {
   try {
-    // Determine where this HTML is hosted
     const base = window.location.pathname
-      .replace(/\/apps\/.*/, "")   // strip /apps/mycomputer.html
-      .replace(/\/$/, "");         // remove trailing slash
-
-    // Always fetch relative to the project base
+      .replace(/\/apps\/.*/, "")
+      .replace(/\/$/, "");
     const rel = `${base}${encodeURI(path)}/index.json`;
     console.log("Fetching:", rel);
 
@@ -150,7 +176,6 @@ async function getFolderListing(path) {
       console.warn("Index not found:", rel, r.status);
       return [];
     }
-
     const data = await r.json();
     console.log("Loaded listing:", data);
     return data;
@@ -160,9 +185,6 @@ async function getFolderListing(path) {
     return [];
   }
 }
-
-
-
 
 function goUp(){
   if(currentPath==="/media/mnt"){showDrives();return;}
@@ -176,6 +198,19 @@ function openFind(){
   const f=document.getElementById("findWin");
   f.style.display=f.style.display==="none"?"block":"none";
 }
+
+function openChillPad(filePath, ev) {
+  ev?.preventDefault?.();
+  ev?.stopPropagation?.();
+
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({ type: "openApp", app: "chillpad", file: filePath }, "*");
+  } else {
+    window.open(`chillpad.html?file=${encodeURIComponent(filePath)}`, "_blank");
+  }
+}
+
+
 
 showDrives();
 </script>
